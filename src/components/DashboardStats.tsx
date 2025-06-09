@@ -3,19 +3,48 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, CheckCircle, TrendingUp, Heart } from 'lucide-react';
 
-const DashboardStats = () => {
-  const stats = [
+interface DashboardStatsProps {
+  selectedSector: string;
+  selectedLifegroup: string;
+}
+
+const DashboardStats: React.FC<DashboardStatsProps> = ({ selectedSector, selectedLifegroup }) => {
+  // Mock data baseada nos filtros selecionados
+  const getFilteredStats = () => {
+    // Aqui você aplicaria os filtros reais aos dados
+    // Por enquanto, retornando dados mockados
+    
+    if (selectedSector !== 'all' || selectedLifegroup !== 'all') {
+      return {
+        totalPeople: selectedLifegroup !== 'all' ? '8' : '15',
+        baptized: selectedLifegroup !== 'all' ? '3' : '6',
+        growing: selectedLifegroup !== 'all' ? '5' : '9',
+        newBirth: selectedLifegroup !== 'all' ? '4' : '7',
+      };
+    }
+
+    return {
+      totalPeople: '24',
+      baptized: '8',
+      growing: '16',
+      newBirth: '12',
+    };
+  };
+
+  const stats = getFilteredStats();
+
+  const statsConfig = [
     {
       title: 'Total de Pessoas',
-      value: '24',
-      description: 'Pessoas ativas nos grupos',
+      value: stats.totalPeople,
+      description: 'Pessoas ativas nos lifegroups',
       icon: Users,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100',
     },
     {
       title: 'Batizados',
-      value: '8',
+      value: stats.baptized,
       description: 'Completaram o batismo',
       icon: CheckCircle,
       color: 'text-green-600',
@@ -23,7 +52,7 @@ const DashboardStats = () => {
     },
     {
       title: 'Em Crescimento',
-      value: '16',
+      value: stats.growing,
       description: 'Progredindo nas etapas',
       icon: TrendingUp,
       color: 'text-orange-600',
@@ -31,7 +60,7 @@ const DashboardStats = () => {
     },
     {
       title: 'Novos Nascimentos',
-      value: '12',
+      value: stats.newBirth,
       description: 'Aceitos recentemente',
       icon: Heart,
       color: 'text-purple-600',
@@ -41,7 +70,7 @@ const DashboardStats = () => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      {stats.map((stat, index) => (
+      {statsConfig.map((stat, index) => (
         <Card key={index} className="hover:shadow-lg transition-shadow duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">

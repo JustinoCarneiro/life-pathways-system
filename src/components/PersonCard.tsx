@@ -12,7 +12,6 @@ interface Person {
   address: string;
   birthDate: string;
   lifegroupId: string;
-  groupId?: string;
   steps: {
     newBirth?: string;
     initialFollowUp?: boolean;
@@ -30,7 +29,6 @@ const PersonCard: React.FC<Person> = ({
   address,
   birthDate,
   lifegroupId,
-  groupId,
   steps,
 }) => {
   const calculateAge = (birthDate: string) => {
