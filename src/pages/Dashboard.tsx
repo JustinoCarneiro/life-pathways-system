@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,7 +9,10 @@ import SectorsList from '@/components/SectorsList';
 import DashboardStats from '@/components/DashboardStats';
 import UserManagement from '@/components/UserManagement';
 import PeopleFilters from '@/components/PeopleFilters';
-import { LogOut, Plus, Users, TrendingUp, Heart, Filter, Settings } from 'lucide-react';
+import DiscipledPeople from '@/components/DiscipledPeople';
+import UserProfile from '@/components/UserProfile';
+import ReportGenerator from '@/components/ReportGenerator';
+import { LogOut, Plus, Users, TrendingUp, Heart, Filter, Settings, User, FileText, UserCheck } from 'lucide-react';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -19,9 +22,28 @@ const Dashboard = () => {
   const [selectedSector, setSelectedSector] = useState<string>('all');
   const [selectedLifegroup, setSelectedLifegroup] = useState<string>('all');
 
+  // Implementar "lembrar por 1 semana"
+  useEffect(() => {
+    const loginTime = localStorage.getItem('loginTime');
+    if (loginTime) {
+      const oneWeek = 7 * 24 * 60 * 60 * 1000; // 1 semana em milliseconds
+      const now = new Date().getTime();
+      const loginDate = new Date(loginTime).getTime();
+      
+      if (now - loginDate > oneWeek) {
+        // Logout automático após 1 semana
+        handleLogout();
+      }
+    } else {
+      // Se não há loginTime, definir agora
+      localStorage.setItem('loginTime', new Date().toISOString());
+    }
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem('userRole');
     localStorage.removeItem('userName');
+    localStorage.removeItem('loginTime');
     navigate('/');
   };
 
@@ -74,7 +96,7 @@ const Dashboard = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Dashboard</h2>
-          <p className="text-gray-600">Gerencie setores, lifegroups e acompanhe o crescimento espiritual</p>
+          <p className="text-gray-600">Gerencie setores, lifegroups e acompanhe o trilho do membro</p>
         </div>
 
         {/* Filtros */}
@@ -131,11 +153,13 @@ const Dashboard = () => {
         />
 
         <Tabs defaultValue="hierarchy" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="hierarchy">Hierarquia</TabsTrigger>
             <TabsTrigger value="people-filters">Filtro de Pessoas</TabsTrigger>
-            {userRole === 'admin' && <TabsTrigger value="user-management">Gestão de Usuários</TabsTrigger>}
+            <TabsTrigger value="discipled-people">Pessoas Discipuladas</TabsTrigger>
             <TabsTrigger value="reports">Relatórios</TabsTrigger>
+            {userRole === 'admin' && <TabsTrigger value="user-management">Gestão de Usuários</TabsTrigger>}
+            <TabsTrigger value="profile">Perfil</TabsTrigger>
           </TabsList>
 
           <TabsContent value="hierarchy">
@@ -154,26 +178,28 @@ const Dashboard = () => {
             />
           </TabsContent>
 
+          <TabsContent value="discipled-people">
+            <DiscipledPeople 
+              selectedSector={selectedSector}
+              selectedLifegroup={selectedLifegroup}
+            />
+          </TabsContent>
+
+          <TabsContent value="reports">
+            <ReportGenerator 
+              selectedSector={selectedSector}
+              selectedLifegroup={selectedLifegroup}
+            />
+          </TabsContent>
+
           {userRole === 'admin' && (
             <TabsContent value="user-management">
               <UserManagement />
             </TabsContent>
           )}
 
-          <TabsContent value="reports">
-            <Card>
-              <CardHeader>
-                <CardTitle>Relatórios</CardTitle>
-                <CardDescription>
-                  Análises detalhadas e relatórios de crescimento
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-500 text-center py-8">
-                  Funcionalidade de relatórios em desenvolvimento
-                </p>
-              </CardContent>
-            </Card>
+          <TabsContent value="profile">
+            <UserProfile />
           </TabsContent>
         </Tabs>
       </main>

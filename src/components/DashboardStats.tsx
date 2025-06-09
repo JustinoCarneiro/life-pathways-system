@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, CheckCircle, Coffee, Heart, Zap, Waves, Star } from 'lucide-react';
+import { Users, CheckCircle, Coffee, Heart, Zap, Waves, Star, UserX, UserCheck } from 'lucide-react';
 
 interface DashboardStatsProps {
   selectedSector: string;
@@ -22,6 +22,9 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ selectedSector, selecte
         stationDNA: selectedLifegroup !== 'all' ? '4' : '7',
         baptism: selectedLifegroup !== 'all' ? '3' : '6',
         newCreature: selectedLifegroup !== 'all' ? '4' : '8',
+        withoutTopics: selectedLifegroup !== 'all' ? '2' : '3',
+        discipled: selectedLifegroup !== 'all' ? '5' : '9',
+        notDiscipled: selectedLifegroup !== 'all' ? '3' : '6',
       };
     }
 
@@ -33,6 +36,9 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ selectedSector, selecte
       stationDNA: '12',
       baptism: '8',
       newCreature: '14',
+      withoutTopics: '4',
+      discipled: '16',
+      notDiscipled: '8',
     };
   };
 
@@ -48,12 +54,28 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ selectedSector, selecte
       bgColor: 'bg-blue-100',
     },
     {
-      title: 'Batizados',
-      value: stats.baptized,
-      description: 'Completaram o batismo',
-      icon: Waves,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100',
+      title: 'Pessoas Discipuladas',
+      value: stats.discipled,
+      description: 'Com discipulador definido',
+      icon: UserCheck,
+      color: 'text-green-600',
+      bgColor: 'bg-green-100',
+    },
+    {
+      title: 'Não Discipuladas',
+      value: stats.notDiscipled,
+      description: 'Sem discipulador definido',
+      icon: UserX,
+      color: 'text-red-600',
+      bgColor: 'bg-red-100',
+    },
+    {
+      title: 'Sem Nenhum Tópico',
+      value: stats.withoutTopics,
+      description: 'Não começaram trilho',
+      icon: UserX,
+      color: 'text-gray-600',
+      bgColor: 'bg-gray-100',
     },
     {
       title: 'Café com Pastor',
@@ -80,14 +102,6 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ selectedSector, selecte
       bgColor: 'bg-yellow-100',
     },
     {
-      title: 'Batismo',
-      value: stats.baptism,
-      description: 'Realizaram o batismo',
-      icon: CheckCircle,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100',
-    },
-    {
       title: 'Nova Criatura',
       value: stats.newCreature,
       description: 'Curso Nova Criatura',
@@ -95,10 +109,18 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ selectedSector, selecte
       color: 'text-purple-600',
       bgColor: 'bg-purple-100',
     },
+    {
+      title: 'Batismo',
+      value: stats.baptized,
+      description: 'Realizaram o batismo',
+      icon: Waves,
+      color: 'text-cyan-600',
+      bgColor: 'bg-cyan-100',
+    },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-9 gap-4 mb-8">
       {statsConfig.map((stat, index) => (
         <Card key={index} className="hover:shadow-lg transition-shadow duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

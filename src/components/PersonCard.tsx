@@ -15,6 +15,7 @@ interface Person {
   lifegroupId: string;
   isLeader?: boolean;
   isAssistant?: boolean;
+  disciplerId?: string;
   steps: {
     newBirth?: string;
     initialFollowUp?: boolean;
@@ -22,6 +23,7 @@ interface Person {
     stationDNA?: boolean;
     newCreature?: boolean;
     baptism?: boolean;
+    discipled?: boolean;
   };
 }
 
@@ -34,6 +36,7 @@ const PersonCard: React.FC<Person> = ({
   lifegroupId,
   isLeader = false,
   isAssistant = false,
+  disciplerId,
   steps,
 }) => {
   const userRole = localStorage.getItem('userRole') || 'user';
@@ -51,7 +54,7 @@ const PersonCard: React.FC<Person> = ({
   };
 
   const getProgressPercentage = () => {
-    const totalSteps = 5;
+    const totalSteps = 6;
     const completedSteps = Object.values(steps).filter(Boolean).length;
     return (completedSteps / totalSteps) * 100;
   };
@@ -78,6 +81,7 @@ const PersonCard: React.FC<Person> = ({
               <CardTitle className="text-base">{name}</CardTitle>
               {isLeader && <span className="text-yellow-500">⭐</span>}
               {isAssistant && <span className="text-blue-500">🤚</span>}
+              {steps.discipled && <span className="text-green-500">👥</span>}
             </div>
             <CardDescription>{calculateAge(birthDate)} anos</CardDescription>
           </div>

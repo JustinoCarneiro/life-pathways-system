@@ -21,6 +21,7 @@ interface Person {
   sectorId: string;
   isLeader: boolean;
   isAssistant: boolean;
+  disciplerId?: string;
   steps: {
     newBirth?: string;
     initialFollowUp?: boolean;
@@ -28,6 +29,7 @@ interface Person {
     stationDNA?: boolean;
     newCreature?: boolean;
     baptism?: boolean;
+    discipled?: boolean;
   };
 }
 
@@ -39,6 +41,7 @@ const PeopleFilters: React.FC<PeopleFiltersProps> = ({ selectedSector, selectedL
     stationDNA: false,
     newCreature: false,
     baptism: false,
+    discipled: false,
   });
 
   // Mock data de pessoas
@@ -53,6 +56,7 @@ const PeopleFilters: React.FC<PeopleFiltersProps> = ({ selectedSector, selectedL
       sectorId: '1',
       isLeader: true,
       isAssistant: false,
+      disciplerId: undefined,
       steps: {
         newBirth: '2024-01-15',
         initialFollowUp: true,
@@ -60,6 +64,7 @@ const PeopleFilters: React.FC<PeopleFiltersProps> = ({ selectedSector, selectedL
         stationDNA: false,
         newCreature: false,
         baptism: false,
+        discipled: true,
       },
     },
     {
@@ -72,6 +77,7 @@ const PeopleFilters: React.FC<PeopleFiltersProps> = ({ selectedSector, selectedL
       sectorId: '1',
       isLeader: false,
       isAssistant: true,
+      disciplerId: '1',
       steps: {
         newBirth: '2023-11-10',
         initialFollowUp: true,
@@ -79,6 +85,7 @@ const PeopleFilters: React.FC<PeopleFiltersProps> = ({ selectedSector, selectedL
         stationDNA: true,
         newCreature: true,
         baptism: true,
+        discipled: true,
       },
     },
     {
@@ -91,6 +98,7 @@ const PeopleFilters: React.FC<PeopleFiltersProps> = ({ selectedSector, selectedL
       sectorId: '2',
       isLeader: false,
       isAssistant: false,
+      disciplerId: undefined,
       steps: {
         newBirth: '2024-02-01',
         initialFollowUp: true,
@@ -98,6 +106,7 @@ const PeopleFilters: React.FC<PeopleFiltersProps> = ({ selectedSector, selectedL
         stationDNA: false,
         newCreature: false,
         baptism: false,
+        discipled: false,
       },
     },
   ];
@@ -121,7 +130,7 @@ const PeopleFilters: React.FC<PeopleFiltersProps> = ({ selectedSector, selectedL
       filtered = filtered.filter(person => {
         return activeMissingFilters.some(([step]) => {
           const stepValue = person.steps[step as keyof typeof person.steps];
-          return !stepValue || stepValue === false;
+          return !stepValue;
         });
       });
     }
@@ -138,6 +147,7 @@ const PeopleFilters: React.FC<PeopleFiltersProps> = ({ selectedSector, selectedL
     stationDNA: 'Estação DNA',
     newCreature: 'Nova Criatura',
     baptism: 'Batismo',
+    discipled: 'Discipulada',
   };
 
   const activeMissingFiltersCount = Object.values(missingFilters).filter(Boolean).length;
@@ -151,7 +161,7 @@ const PeopleFilters: React.FC<PeopleFiltersProps> = ({ selectedSector, selectedL
             Filtro de Pessoas
           </CardTitle>
           <CardDescription>
-            Encontre pessoas que estão faltando etapas específicas do crescimento espiritual
+            Encontre pessoas que estão faltando etapas específicas do trilho do membro
           </CardDescription>
         </CardHeader>
         <CardContent>

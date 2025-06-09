@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, Circle, Heart, Coffee, Dna, Sparkles, Waves } from 'lucide-react';
+import { CheckCircle, Circle, Heart, Coffee, Dna, Sparkles, Waves, Users } from 'lucide-react';
 
 interface Steps {
   newBirth?: string;
@@ -12,6 +12,7 @@ interface Steps {
   stationDNA?: boolean;
   newCreature?: boolean;
   baptism?: boolean;
+  discipled?: boolean;
 }
 
 interface StepIconsProps {
@@ -67,6 +68,13 @@ const StepIcons: React.FC<StepIconsProps> = ({ lifegroupId, personId, steps }) =
       color: 'bg-cyan-100 text-cyan-700 border-cyan-200',
       activeColor: 'bg-cyan-500 text-white',
     },
+    {
+      key: 'discipled',
+      label: 'Discipulada',
+      icon: Users,
+      color: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+      activeColor: 'bg-indigo-500 text-white',
+    },
   ];
 
   const toggleStep = async (stepKey: string) => {
@@ -90,7 +98,7 @@ const StepIcons: React.FC<StepIconsProps> = ({ lifegroupId, personId, steps }) =
 
   return (
     <div className="space-y-3">
-      <h4 className="text-sm font-medium text-gray-700">Etapas do Crescimento</h4>
+      <h4 className="text-sm font-medium text-gray-700">Etapas do Trilho</h4>
       <div className="grid grid-cols-2 gap-2">
         {stepsList.map((step) => {
           const StepIcon = step.icon;
