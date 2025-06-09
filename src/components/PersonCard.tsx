@@ -12,6 +12,7 @@ interface Person {
   address: string;
   birthDate: string;
   lifegroupId: string;
+  groupId?: string;
   steps: {
     newBirth?: string;
     initialFollowUp?: boolean;
@@ -29,6 +30,7 @@ const PersonCard: React.FC<Person> = ({
   address,
   birthDate,
   lifegroupId,
+  groupId,
   steps,
 }) => {
   const calculateAge = (birthDate: string) => {
@@ -55,35 +57,39 @@ const PersonCard: React.FC<Person> = ({
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle className="text-lg">{name}</CardTitle>
+            <CardTitle className="text-base">{name}</CardTitle>
             <CardDescription>{calculateAge(birthDate)} anos</CardDescription>
           </div>
           <Badge 
             variant={progressPercentage === 100 ? "default" : "secondary"}
             className="text-xs"
           >
-            {Math.round(progressPercentage)}% completo
+            {Math.round(progressPercentage)}%
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2 text-sm text-gray-600">
+      <CardContent className="space-y-3">
+        <div className="space-y-1 text-xs text-gray-600">
           <div className="flex items-center">
-            <Phone className="h-4 w-4 mr-2" />
+            <Phone className="h-3 w-3 mr-2" />
             {contact}
           </div>
           <div className="flex items-center">
-            <MapPin className="h-4 w-4 mr-2" />
+            <MapPin className="h-3 w-3 mr-2" />
             {address}
           </div>
           <div className="flex items-center">
-            <Calendar className="h-4 w-4 mr-2" />
+            <Calendar className="h-3 w-3 mr-2" />
             {new Date(birthDate).toLocaleDateString('pt-BR')}
           </div>
         </div>
 
         <div className="pt-2">
-          <StepIcons lifegroupId={lifegroupId} personId={id} steps={steps} />
+          <StepIcons 
+            lifegroupId={lifegroupId} 
+            personId={id} 
+            steps={steps} 
+          />
         </div>
       </CardContent>
     </Card>
