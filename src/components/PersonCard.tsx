@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import StepIcons from './StepIcons';
-import { Calendar, MapPin, Phone } from 'lucide-react';
+import { Calendar, MapPin, Phone, Edit, Trash2 } from 'lucide-react';
 
 interface Person {
   id: string;
@@ -12,6 +13,8 @@ interface Person {
   address: string;
   birthDate: string;
   lifegroupId: string;
+  isLeader?: boolean;
+  isAssistant?: boolean;
   steps: {
     newBirth?: string;
     initialFollowUp?: boolean;
@@ -29,8 +32,13 @@ const PersonCard: React.FC<Person> = ({
   address,
   birthDate,
   lifegroupId,
+  isLeader = false,
+  isAssistant = false,
   steps,
 }) => {
+  const userRole = localStorage.getItem('userRole') || 'user';
+  const [showEditForm, setShowEditForm] = useState(false);
+
   const calculateAge = (birthDate: string) => {
     const today = new Date();
     const birth = new Date(birthDate);
@@ -50,20 +58,47 @@ const PersonCard: React.FC<Person> = ({
 
   const progressPercentage = getProgressPercentage();
 
+  const handleEdit = () => {
+    setShowEditForm(true);
+  };
+
+  const handleDelete = () => {
+    if (confirm(`Tem certeza que deseja excluir ${name}?`)) {
+      // Implementar lógica de exclusão
+      console.log('Excluindo pessoa:', id);
+    }
+  };
+
   return (
     <Card className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500">
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="text-base">{name}</CardTitle>
+          <div className="flex-1">
+            <div className="flex items-center space-x-2">
+              <CardTitle className="text-base">{name}</CardTitle>
+              {isLeader && <span className="text-yellow-500">⭐</span>}
+              {isAssistant && <span className="text-blue-500">🤚</span>}
+            </div>
             <CardDescription>{calculateAge(birthDate)} anos</CardDescription>
           </div>
-          <Badge 
-            variant={progressPercentage === 100 ? "default" : "secondary"}
-            className="text-xs"
-          >
-            {Math.round(progressPercentage)}%
-          </Badge>
+          <div className="flex items-center space-x-2">
+            <Badge 
+              variant={progressPercentage === 100 ? "default" : "secondary"}
+              className="text-xs"
+            >
+              {Math.round(progressPercentage)}%
+            </Badge>
+            {userRole === 'admin' && (
+              <div className="flex space-x-1">
+                <Button size="sm" variant="outline" onClick={handleEdit}>
+                  <Edit className="h-3 w-3" />
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleDelete}>
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

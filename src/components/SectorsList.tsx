@@ -2,10 +2,11 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import PersonCard from './PersonCard';
 import CreateSectorForm from './CreateSectorForm';
-import { ChevronDown, ChevronRight, MapPin, Users, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, MapPin, Users, Plus, Edit, Trash2 } from 'lucide-react';
 
 interface Sector {
   id: string;
@@ -28,6 +29,8 @@ interface Person {
   address: string;
   birthDate: string;
   lifegroupId: string;
+  isLeader?: boolean;
+  isAssistant?: boolean;
   steps: {
     newBirth?: string;
     initialFollowUp?: boolean;
@@ -53,7 +56,6 @@ const SectorsList: React.FC<SectorsListProps> = ({
 }) => {
   const userRole = localStorage.getItem('userRole') || 'user';
   
-  // Mock data atualizada - hierarquia simplificada: Setor > Lifegroups > Pessoas
   const [sectors, setSectors] = useState<Sector[]>([
     {
       id: '1',
@@ -72,6 +74,8 @@ const SectorsList: React.FC<SectorsListProps> = ({
               address: 'Rua das Flores, 123 - Fortaleza',
               birthDate: '1990-05-15',
               lifegroupId: '1',
+              isLeader: true,
+              isAssistant: false,
               steps: {
                 newBirth: '2024-01-15',
                 initialFollowUp: true,
@@ -88,6 +92,8 @@ const SectorsList: React.FC<SectorsListProps> = ({
               address: 'Av. Principal, 456 - Fortaleza',
               birthDate: '1985-09-22',
               lifegroupId: '1',
+              isLeader: false,
+              isAssistant: true,
               steps: {
                 newBirth: '2023-11-10',
                 initialFollowUp: true,
@@ -118,6 +124,8 @@ const SectorsList: React.FC<SectorsListProps> = ({
               address: 'Rua da Esperança, 789 - Fortaleza',
               birthDate: '1992-03-08',
               lifegroupId: '2',
+              isLeader: false,
+              isAssistant: false,
               steps: {
                 newBirth: '2024-02-01',
                 initialFollowUp: true,
@@ -135,6 +143,9 @@ const SectorsList: React.FC<SectorsListProps> = ({
 
   const [expandedSectors, setExpandedSectors] = useState<string[]>(['1']);
   const [expandedLifegroups, setExpandedLifegroups] = useState<string[]>(['1']);
+  const [editingSector, setEditingSector] = useState<string | null>(null);
+  const [editingLifegroup, setEditingLifegroup] = useState<string | null>(null);
+  const [editNames, setEditNames] = useState<{ [key: string]: string }>({});
 
   const toggleSector = (sectorId: string) => {
     setExpandedSectors(prev => 
@@ -161,6 +172,50 @@ const SectorsList: React.FC<SectorsListProps> = ({
     };
     setSectors(prev => [...prev, newSector]);
     onCloseCreateForm();
+  };
+
+  const handleEditSector = (sectorId: string, newName: string) => {
+    setSectors(prev => prev.map(sector => 
+      sector.id === sectorId ? { ...sector, name: newName } : sector
+    ));
+    setEditingSector(null);
+    setEditNames(prev => ({ ...prev, [sectorId]: '' }));
+  };
+
+  const handleEditLifegroup = (lifegroupId: string, newName: string) => {
+    setSectors(prev => prev.map(sector => ({
+      ...sector,
+      lifegroups: sector.lifegroups.map(lg => 
+        lg.id === lifegroupId ? { ...lg, name: newName } : lg
+      )
+    })));
+    setEditingLifegroup(null);
+    setEditNames(prev => ({ ...prev, [lifegroupId]: '' }));
+  };
+
+  const handleDeleteSector = (sectorId: string) => {
+    if (confirm('Tem certeza que deseja excluir este setor?')) {
+      setSectors(prev => prev.filter(sector => sector.id !== sectorId));
+    }
+  };
+
+  const handleDeleteLifegroup = (lifegroupId: string) => {
+    if (confirm('Tem certeza que deseja excluir este lifegroup?')) {
+      setSectors(prev => prev.map(sector => ({
+        ...sector,
+        lifegroups: sector.lifegroups.filter(lg => lg.id !== lifegroupId)
+      })));
+    }
+  };
+
+  const startEditingSector = (sector: Sector) => {
+    setEditingSector(sector.id);
+    setEditNames(prev => ({ ...prev, [sector.id]: sector.name }));
+  };
+
+  const startEditingLifegroup = (lifegroup: Lifegroup) => {
+    setEditingLifegroup(lifegroup.id);
+    setEditNames(prev => ({ ...prev, [lifegroup.id]: lifegroup.name }));
   };
 
   // Filtrar setores baseado na seleção
@@ -199,9 +254,32 @@ const SectorsList: React.FC<SectorsListProps> = ({
                     <ChevronDown className="h-4 w-4" /> : 
                     <ChevronRight className="h-4 w-4" />
                   }
-                  <div>
-                    <h3 className="font-semibold text-lg">{sector.name}</h3>
-                    <p className="text-sm text-gray-600">{sector.description}</p>
+                  <div className="flex-1">
+                    {editingSector === sector.id ? (
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          value={editNames[sector.id] || ''}
+                          onChange={(e) => setEditNames(prev => ({ ...prev, [sector.id]: e.target.value }))}
+                          className="max-w-xs"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              handleEditSector(sector.id, editNames[sector.id]);
+                            }
+                          }}
+                        />
+                        <Button size="sm" onClick={() => handleEditSector(sector.id, editNames[sector.id])}>
+                          Salvar
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingSector(null)}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    ) : (
+                      <div>
+                        <h3 className="font-semibold text-lg">{sector.name}</h3>
+                        <p className="text-sm text-gray-600">{sector.description}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -212,10 +290,18 @@ const SectorsList: React.FC<SectorsListProps> = ({
                     {sector.lifegroups.reduce((total, lg) => total + lg.people.length, 0)} Pessoas
                   </Badge>
                   {userRole === 'admin' && (
-                    <Button size="sm" variant="outline">
-                      <Plus className="h-4 w-4 mr-1" />
-                      Lifegroup
-                    </Button>
+                    <div className="flex space-x-1">
+                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); startEditingSector(sector); }}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleDeleteSector(sector.id); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Lifegroup
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -238,11 +324,34 @@ const SectorsList: React.FC<SectorsListProps> = ({
                             <ChevronRight className="h-4 w-4" />
                           }
                           <Users className="h-4 w-4 text-blue-600" />
-                          <div>
-                            <h4 className="font-medium">{lifegroup.name}</h4>
-                            <p className="text-sm text-gray-600">
-                              {lifegroup.people.length} pessoas cadastradas
-                            </p>
+                          <div className="flex-1">
+                            {editingLifegroup === lifegroup.id ? (
+                              <div className="flex items-center space-x-2">
+                                <Input
+                                  value={editNames[lifegroup.id] || ''}
+                                  onChange={(e) => setEditNames(prev => ({ ...prev, [lifegroup.id]: e.target.value }))}
+                                  className="max-w-xs"
+                                  onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleEditLifegroup(lifegroup.id, editNames[lifegroup.id]);
+                                    }
+                                  }}
+                                />
+                                <Button size="sm" onClick={() => handleEditLifegroup(lifegroup.id, editNames[lifegroup.id])}>
+                                  Salvar
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => setEditingLifegroup(null)}>
+                                  Cancelar
+                                </Button>
+                              </div>
+                            ) : (
+                              <div>
+                                <h4 className="font-medium">{lifegroup.name}</h4>
+                                <p className="text-sm text-gray-600">
+                                  {lifegroup.people.length} pessoas cadastradas
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -250,10 +359,18 @@ const SectorsList: React.FC<SectorsListProps> = ({
                             {lifegroup.people.length} pessoas
                           </Badge>
                           {userRole === 'admin' && (
-                            <Button size="sm" variant="outline">
-                              <Plus className="h-4 w-4 mr-1" />
-                              Pessoa
-                            </Button>
+                            <div className="flex space-x-1">
+                              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); startEditingLifegroup(lifegroup); }}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleDeleteLifegroup(lifegroup.id); }}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                                <Plus className="h-4 w-4 mr-1" />
+                                Pessoa
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </div>

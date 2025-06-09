@@ -19,6 +19,8 @@ interface Person {
   birthDate: string;
   lifegroupId: string;
   sectorId: string;
+  isLeader: boolean;
+  isAssistant: boolean;
   steps: {
     newBirth?: string;
     initialFollowUp?: boolean;
@@ -49,6 +51,8 @@ const PeopleFilters: React.FC<PeopleFiltersProps> = ({ selectedSector, selectedL
       birthDate: '1990-05-15',
       lifegroupId: '1',
       sectorId: '1',
+      isLeader: true,
+      isAssistant: false,
       steps: {
         newBirth: '2024-01-15',
         initialFollowUp: true,
@@ -66,6 +70,8 @@ const PeopleFilters: React.FC<PeopleFiltersProps> = ({ selectedSector, selectedL
       birthDate: '1985-09-22',
       lifegroupId: '1',
       sectorId: '1',
+      isLeader: false,
+      isAssistant: true,
       steps: {
         newBirth: '2023-11-10',
         initialFollowUp: true,
@@ -83,6 +89,8 @@ const PeopleFilters: React.FC<PeopleFiltersProps> = ({ selectedSector, selectedL
       birthDate: '1992-03-08',
       lifegroupId: '2',
       sectorId: '2',
+      isLeader: false,
+      isAssistant: false,
       steps: {
         newBirth: '2024-02-01',
         initialFollowUp: true,
@@ -125,9 +133,9 @@ const PeopleFilters: React.FC<PeopleFiltersProps> = ({ selectedSector, selectedL
 
   const stepLabels = {
     newBirth: 'Novo Nascimento',
-    initialFollowUp: 'Seguimento Inicial',
+    initialFollowUp: 'ACI (Acompanhamento Inicial)',
     coffeeWithPastor: 'Café com Pastor',
-    stationDNA: 'Station DNA',
+    stationDNA: 'Estação DNA',
     newCreature: 'Nova Criatura',
     baptism: 'Batismo',
   };
