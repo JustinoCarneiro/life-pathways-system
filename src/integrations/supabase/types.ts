@@ -9,16 +9,225 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      areas: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          responsible_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          responsible_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          responsible_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      lifegroups: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          responsible_id: string | null
+          sector_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          responsible_id?: string | null
+          sector_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          responsible_id?: string | null
+          sector_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lifegroups_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people: {
+        Row: {
+          address: string | null
+          birth_date: string | null
+          contact: string | null
+          created_at: string | null
+          discipler_id: string | null
+          id: string
+          is_assistant: boolean | null
+          is_leader: boolean | null
+          lifegroup_id: string | null
+          name: string
+          steps: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          birth_date?: string | null
+          contact?: string | null
+          created_at?: string | null
+          discipler_id?: string | null
+          id?: string
+          is_assistant?: boolean | null
+          is_leader?: boolean | null
+          lifegroup_id?: string | null
+          name: string
+          steps?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          birth_date?: string | null
+          contact?: string | null
+          created_at?: string | null
+          discipler_id?: string | null
+          id?: string
+          is_assistant?: boolean | null
+          is_leader?: boolean | null
+          lifegroup_id?: string | null
+          name?: string
+          steps?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_discipler_id_fkey"
+            columns: ["discipler_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_lifegroup_id_fkey"
+            columns: ["lifegroup_id"]
+            isOneToOne: false
+            referencedRelation: "lifegroups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          contact: string | null
+          created_at: string | null
+          full_name: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          contact?: string | null
+          created_at?: string | null
+          full_name: string
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          contact?: string | null
+          created_at?: string | null
+          full_name?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      sectors: {
+        Row: {
+          area_id: string
+          created_at: string | null
+          id: string
+          name: string
+          responsible_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          area_id: string
+          created_at?: string | null
+          id?: string
+          name: string
+          responsible_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          area_id?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          responsible_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sectors_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["user_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["user_role"]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      user_role:
+        | "admin"
+        | "area_leader"
+        | "sector_leader"
+        | "lifegroup_leader"
+        | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +342,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: [
+        "admin",
+        "area_leader",
+        "sector_leader",
+        "lifegroup_leader",
+        "user",
+      ],
+    },
   },
 } as const

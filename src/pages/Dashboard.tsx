@@ -4,63 +4,47 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useNavigate } from 'react-router-dom';
-import SectorsList from '@/components/SectorsList';
+import { useAuth } from '@/hooks/useAuth';
+import { Navigate } from 'react-router-dom';
+import HierarchyManagement from '@/components/HierarchyManagement';
 import DashboardStats from '@/components/DashboardStats';
 import UserManagement from '@/components/UserManagement';
 import PeopleFilters from '@/components/PeopleFilters';
 import DiscipledPeople from '@/components/DiscipledPeople';
 import UserProfile from '@/components/UserProfile';
 import ReportGenerator from '@/components/ReportGenerator';
-import { LogOut, Plus, Users, TrendingUp, Heart, Filter, Settings, User, FileText, UserCheck } from 'lucide-react';
+import { LogOut, Plus, Users, TrendingUp, Heart, Filter, Settings, User, FileText, UserCheck, Menu } from 'lucide-react';
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const userName = localStorage.getItem('userName') || 'Usuário';
-  const userRole = localStorage.getItem('userRole') || 'user';
-  const [showCreateSector, setShowCreateSector] = useState(false);
+  const { user, isLoading, userRole, signOut } = useAuth();
+  const [showCreateArea, setShowCreateArea] = useState(false);
+  const [selectedArea, setSelectedArea] = useState<string>('all');
   const [selectedSector, setSelectedSector] = useState<string>('all');
   const [selectedLifegroup, setSelectedLifegroup] = useState<string>('all');
 
-  // Implementar "lembrar por 1 semana"
-  useEffect(() => {
-    const loginTime = localStorage.getItem('loginTime');
-    if (loginTime) {
-      const oneWeek = 7 * 24 * 60 * 60 * 1000; // 1 semana em milliseconds
-      const now = new Date().getTime();
-      const loginDate = new Date(loginTime).getTime();
-      
-      if (now - loginDate > oneWeek) {
-        // Logout automático após 1 semana
-        handleLogout();
-      }
-    } else {
-      // Se não há loginTime, definir agora
-      localStorage.setItem('loginTime', new Date().toISOString());
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuário';
+
+  const getRoleLabel = (role: string | null) => {
+    switch (role) {
+      case 'admin': return 'Administrador';
+      case 'area_leader': return 'Líder de Área';
+      case 'sector_leader': return 'Líder de Setor';
+      case 'lifegroup_leader': return 'Líder de Lifegroup';
+      default: return 'Usuário';
     }
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('loginTime');
-    navigate('/');
   };
-
-  // Mock data para setores e lifegroups
-  const sectors = [
-    { id: '1', name: 'Setor Norte' },
-    { id: '2', name: 'Setor Sul' },
-  ];
-
-  const lifegroups = [
-    { id: '1', name: 'Lifegroup Alpha', sectorId: '1' },
-    { id: '2', name: 'Lifegroup Beta', sectorId: '2' },
-  ];
-
-  const filteredLifegroups = selectedSector === 'all' 
-    ? lifegroups 
-    : lifegroups.filter(lg => lg.sectorId === selectedSector);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -69,21 +53,27 @@ const Dashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
+              <Button variant="ghost" size="sm" className="mr-2 lg:hidden">
+                <Menu className="h-5 w-5" />
+              </Button>
               <Heart className="h-8 w-8 text-blue-600 mr-3" />
-              <h1 className="text-xl font-semibold text-gray-900">START FORTALEZA</h1>
+              <div className="text-left">
+                <h1 className="text-xl font-semibold text-gray-900">START FORTALEZA</h1>
+                <p className="text-xs text-gray-600">Sistema de Gestão</p>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               {userRole === 'admin' && (
-                <Button onClick={() => setShowCreateSector(true)} size="sm">
+                <Button onClick={() => setShowCreateArea(true)} size="sm">
                   <Plus className="h-4 w-4 mr-2" />
-                  Novo Setor
+                  Nova Área
                 </Button>
               )}
-              <span className="text-sm text-gray-600">Olá, {userName}</span>
+              <span className="text-sm text-gray-600 hidden sm:inline">Olá, {userName}</span>
               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                {userRole === 'admin' ? 'Administrador' : 'Líder de Setor'}
+                {getRoleLabel(userRole)}
               </span>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
+              <Button variant="outline" size="sm" onClick={signOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sair
               </Button>
@@ -96,7 +86,7 @@ const Dashboard = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Dashboard</h2>
-          <p className="text-gray-600">Gerencie setores, lifegroups e acompanhe o trilho do membro</p>
+          <p className="text-gray-600">Gerencie a hierarquia e acompanhe o trilho dos membros</p>
         </div>
 
         {/* Filtros */}
@@ -108,26 +98,32 @@ const Dashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex space-x-4">
-              {userRole === 'admin' && (
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-2">Setor</label>
-                  <Select value={selectedSector} onValueChange={setSelectedSector}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {(userRole === 'admin' || userRole === 'area_leader') && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Área</label>
+                  <Select value={selectedArea} onValueChange={setSelectedArea}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Todos os setores" />
+                      <SelectValue placeholder="Todas as áreas" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos os setores</SelectItem>
-                      {sectors.map(sector => (
-                        <SelectItem key={sector.id} value={sector.id}>
-                          {sector.name}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="all">Todas as áreas</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               )}
-              <div className="flex-1">
+              <div>
+                <label className="block text-sm font-medium mb-2">Setor</label>
+                <Select value={selectedSector} onValueChange={setSelectedSector}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os setores" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os setores</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <label className="block text-sm font-medium mb-2">Lifegroup</label>
                 <Select value={selectedLifegroup} onValueChange={setSelectedLifegroup}>
                   <SelectTrigger>
@@ -135,11 +131,6 @@ const Dashboard = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os lifegroups</SelectItem>
-                    {filteredLifegroups.map(lifegroup => (
-                      <SelectItem key={lifegroup.id} value={lifegroup.id}>
-                        {lifegroup.name}
-                      </SelectItem>
-                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -148,6 +139,7 @@ const Dashboard = () => {
         </Card>
 
         <DashboardStats 
+          selectedArea={selectedArea}
           selectedSector={selectedSector}
           selectedLifegroup={selectedLifegroup}
         />
@@ -163,16 +155,19 @@ const Dashboard = () => {
           </TabsList>
 
           <TabsContent value="hierarchy">
-            <SectorsList 
-              showCreateForm={showCreateSector} 
-              onCloseCreateForm={() => setShowCreateSector(false)}
+            <HierarchyManagement 
+              showCreateForm={showCreateArea} 
+              onCloseCreateForm={() => setShowCreateArea(false)}
+              selectedArea={selectedArea}
               selectedSector={selectedSector}
               selectedLifegroup={selectedLifegroup}
+              userRole={userRole}
             />
           </TabsContent>
 
           <TabsContent value="people-filters">
             <PeopleFilters 
+              selectedArea={selectedArea}
               selectedSector={selectedSector}
               selectedLifegroup={selectedLifegroup}
             />
@@ -180,6 +175,7 @@ const Dashboard = () => {
 
           <TabsContent value="discipled-people">
             <DiscipledPeople 
+              selectedArea={selectedArea}
               selectedSector={selectedSector}
               selectedLifegroup={selectedLifegroup}
             />
@@ -187,6 +183,7 @@ const Dashboard = () => {
 
           <TabsContent value="reports">
             <ReportGenerator 
+              selectedArea={selectedArea}
               selectedSector={selectedSector}
               selectedLifegroup={selectedLifegroup}
             />
