@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Building, MapPin, Users, Plus, Edit, Trash2, User } from 'lucide-react';
+import PersonRegistrationForm from './PersonRegistrationForm';
 
 interface Area {
   id: string;
@@ -32,6 +33,19 @@ interface Lifegroup {
   created_at: string;
 }
 
+interface Person {
+  id: string;
+  name: string;
+  contact: string;
+  address: string;
+  birth_date: string;
+  lifegroup_id: string;
+  is_leader: boolean;
+  is_assistant: boolean;
+  discipler_id?: string;
+  steps: any;
+}
+
 interface HierarchyManagementProps {
   showCreateForm: boolean;
   onCloseCreateForm: () => void;
@@ -52,7 +66,9 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
   const [areas, setAreas] = useState<Area[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [lifegroups, setLifegroups] = useState<Lifegroup[]>([]);
+  const [people, setPeople] = useState<Person[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showPersonForm, setShowPersonForm] = useState(false);
   const [newItemData, setNewItemData] = useState({
     name: '',
     type: 'area' as 'area' | 'sector' | 'lifegroup',
@@ -92,9 +108,18 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
 
       if (lifegroupsError) throw lifegroupsError;
 
+      // Fetch people
+      const { data: peopleData, error: peopleError } = await supabase
+        .from('people')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (peopleError) throw peopleError;
+
       setAreas(areasData || []);
       setSectors(sectorsData || []);
       setLifegroups(lifegroupsData || []);
+      setPeople(peopleData || []);
     } catch (error) {
       console.error('Error fetching hierarchy data:', error);
       toast({
@@ -180,6 +205,14 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
     }
   };
 
+  const canEdit = () => {
+    return userRole === 'admin' || userRole === 'area_leader' || userRole === 'sector_leader' || userRole === 'lifegroup_leader';
+  };
+
+  const canDelete = () => {
+    return userRole === 'admin';
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -197,10 +230,21 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
             Gestão de Hierarquia
           </CardTitle>
           <CardDescription>
-            Gerencie áreas, setores e lifegroups do START FORTALEZA
+            Gerencie áreas, setores, lifegroups e pessoas do DISTRITO START
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {showPersonForm && (
+            <PersonRegistrationForm
+              lifegroups={lifegroups}
+              onSuccess={() => {
+                setShowPersonForm(false);
+                fetchHierarchyData();
+              }}
+              onCancel={() => setShowPersonForm(false)}
+            />
+          )}
+
           {showCreateForm && (
             <div className="border rounded-lg p-4 mb-6 bg-gray-50">
               <h3 className="font-semibold mb-4">Criar Novo Item</h3>
@@ -287,6 +331,16 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
             </div>
           )}
 
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-semibold">Hierarquia Completa</h3>
+            {canEdit() && (
+              <Button onClick={() => setShowPersonForm(true)} size="sm">
+                <User className="h-4 w-4 mr-2" />
+                Cadastrar Pessoa
+              </Button>
+            )}
+          </div>
+
           <div className="space-y-6">
             {areas.map((area) => {
               const areaSectors = sectors.filter(s => s.area_id === area.id);
@@ -300,10 +354,12 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
                       <Badge variant="outline" className="ml-2">Área</Badge>
                     </div>
                     <div className="flex space-x-2">
-                      <Button size="sm" variant="outline">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      {userRole === 'admin' && (
+                      {canEdit() && (
+                        <Button size="sm" variant="outline">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDelete() && (
                         <Button size="sm" variant="outline">
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -325,34 +381,78 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
                                 <Badge variant="outline" className="ml-2">Setor</Badge>
                               </div>
                               <div className="flex space-x-2">
-                                <Button size="sm" variant="outline">
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                                <Button size="sm" variant="outline">
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
+                                {canEdit() && (
+                                  <Button size="sm" variant="outline">
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                )}
+                                {canDelete() && (
+                                  <Button size="sm" variant="outline">
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
                               </div>
                             </div>
 
                             {sectorLifegroups.length > 0 && (
                               <div className="ml-6 space-y-2">
-                                {sectorLifegroups.map((lifegroup) => (
-                                  <div key={lifegroup.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded">
-                                    <div className="flex items-center">
-                                      <Users className="h-4 w-4 mr-2 text-purple-600" />
-                                      <span className="text-sm font-medium">{lifegroup.name}</span>
-                                      <Badge variant="outline" className="ml-2">Lifegroup</Badge>
+                                {sectorLifegroups.map((lifegroup) => {
+                                  const lifegroupPeople = people.filter(p => p.lifegroup_id === lifegroup.id);
+                                  
+                                  return (
+                                    <div key={lifegroup.id} className="bg-gray-50 rounded p-3">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center">
+                                          <Users className="h-4 w-4 mr-2 text-purple-600" />
+                                          <span className="text-sm font-medium">{lifegroup.name}</span>
+                                          <Badge variant="outline" className="ml-2">Lifegroup</Badge>
+                                          <Badge variant="secondary" className="ml-2">
+                                            {lifegroupPeople.length} pessoas
+                                          </Badge>
+                                        </div>
+                                        <div className="flex space-x-2">
+                                          {canEdit() && (
+                                            <Button size="sm" variant="outline">
+                                              <Edit className="h-3 w-3" />
+                                            </Button>
+                                          )}
+                                          {canDelete() && (
+                                            <Button size="sm" variant="outline">
+                                              <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </div>
+                                      
+                                      {lifegroupPeople.length > 0 && (
+                                        <div className="ml-6 mt-2 space-y-1">
+                                          {lifegroupPeople.map((person) => (
+                                            <div key={person.id} className="flex items-center justify-between py-1 px-2 bg-white rounded text-xs">
+                                              <div className="flex items-center">
+                                                <User className="h-3 w-3 mr-2 text-gray-500" />
+                                                <span>{person.name}</span>
+                                                {person.is_leader && <span className="ml-1 text-yellow-500">⭐</span>}
+                                                {person.is_assistant && <span className="ml-1 text-blue-500">🤚</span>}
+                                              </div>
+                                              {canEdit() && (
+                                                <div className="flex space-x-1">
+                                                  <Button size="sm" variant="outline" className="h-6 w-6 p-0">
+                                                    <Edit className="h-2 w-2" />
+                                                  </Button>
+                                                  {canDelete() && (
+                                                    <Button size="sm" variant="outline" className="h-6 w-6 p-0">
+                                                      <Trash2 className="h-2 w-2" />
+                                                    </Button>
+                                                  )}
+                                                </div>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
                                     </div>
-                                    <div className="flex space-x-2">
-                                      <Button size="sm" variant="outline">
-                                        <Edit className="h-3 w-3" />
-                                      </Button>
-                                      <Button size="sm" variant="outline">
-                                        <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
