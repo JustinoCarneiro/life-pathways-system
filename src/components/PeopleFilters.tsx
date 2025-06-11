@@ -1,12 +1,16 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import PersonCard from './PersonCard';
-import { Search, AlertTriangle } from 'lucide-react';
+import { Filter, Search, Users } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PeopleFiltersProps {
+  selectedArea: string;
   selectedSector: string;
   selectedLifegroup: string;
 }
@@ -16,225 +20,228 @@ interface Person {
   name: string;
   contact: string;
   address: string;
-  birthDate: string;
-  lifegroupId: string;
-  sectorId: string;
-  isLeader: boolean;
-  isAssistant: boolean;
-  disciplerId?: string;
-  steps: {
-    newBirth?: string;
-    initialFollowUp?: boolean;
-    coffeeWithPastor?: boolean;
-    stationDNA?: boolean;
-    newCreature?: boolean;
-    baptism?: boolean;
-    discipled?: boolean;
-  };
+  birth_date: string;
+  lifegroup_id: string;
+  is_leader: boolean;
+  is_assistant: boolean;
+  discipler_id?: string;
+  steps: any;
 }
 
-const PeopleFilters: React.FC<PeopleFiltersProps> = ({ selectedSector, selectedLifegroup }) => {
-  const [missingFilters, setMissingFilters] = useState({
-    newBirth: false,
-    initialFollowUp: false,
-    coffeeWithPastor: false,
-    stationDNA: false,
-    newCreature: false,
-    baptism: false,
-    discipled: false,
-  });
+const PeopleFilters: React.FC<PeopleFiltersProps> = ({
+  selectedArea,
+  selectedSector,
+  selectedLifegroup
+}) => {
+  const [people, setPeople] = useState<Person[]>([]);
+  const [filteredPeople, setFilteredPeople] = useState<Person[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [ageFilter, setAgeFilter] = useState('all');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data de pessoas
-  const allPeople: Person[] = [
-    {
-      id: '1',
-      name: 'João Silva',
-      contact: '(85) 99999-9999',
-      address: 'Rua das Flores, 123 - Fortaleza',
-      birthDate: '1990-05-15',
-      lifegroupId: '1',
-      sectorId: '1',
-      isLeader: true,
-      isAssistant: false,
-      disciplerId: undefined,
-      steps: {
-        newBirth: '2024-01-15',
-        initialFollowUp: true,
-        coffeeWithPastor: true,
-        stationDNA: false,
-        newCreature: false,
-        baptism: false,
-        discipled: true,
-      },
-    },
-    {
-      id: '2',
-      name: 'Maria Santos',
-      contact: '(85) 88888-8888',
-      address: 'Av. Principal, 456 - Fortaleza',
-      birthDate: '1985-09-22',
-      lifegroupId: '1',
-      sectorId: '1',
-      isLeader: false,
-      isAssistant: true,
-      disciplerId: '1',
-      steps: {
-        newBirth: '2023-11-10',
-        initialFollowUp: true,
-        coffeeWithPastor: true,
-        stationDNA: true,
-        newCreature: true,
-        baptism: true,
-        discipled: true,
-      },
-    },
-    {
-      id: '3',
-      name: 'Pedro Costa',
-      contact: '(85) 77777-7777',
-      address: 'Rua da Esperança, 789 - Fortaleza',
-      birthDate: '1992-03-08',
-      lifegroupId: '2',
-      sectorId: '2',
-      isLeader: false,
-      isAssistant: false,
-      disciplerId: undefined,
-      steps: {
-        newBirth: '2024-02-01',
-        initialFollowUp: true,
-        coffeeWithPastor: false,
-        stationDNA: false,
-        newCreature: false,
-        baptism: false,
-        discipled: false,
-      },
-    },
-  ];
+  useEffect(() => {
+    fetchPeople();
+  }, [selectedArea, selectedSector, selectedLifegroup]);
 
-  const filterPeople = () => {
-    let filtered = allPeople;
+  useEffect(() => {
+    applyFilters();
+  }, [people, searchTerm, ageFilter, roleFilter]);
 
-    // Filtrar por setor
-    if (selectedSector !== 'all') {
-      filtered = filtered.filter(person => person.sectorId === selectedSector);
+  const fetchPeople = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('people')
+        .select('*');
+
+      if (error) {
+        console.error('Error fetching people:', error);
+        return;
+      }
+
+      setPeople(data || []);
+    } catch (error) {
+      console.error('Error fetching people:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...people];
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(person =>
+        person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        person.contact?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        person.address?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
 
-    // Filtrar por lifegroup
-    if (selectedLifegroup !== 'all') {
-      filtered = filtered.filter(person => person.lifegroupId === selectedLifegroup);
-    }
-
-    // Filtrar por etapas faltantes
-    const activeMissingFilters = Object.entries(missingFilters).filter(([_, active]) => active);
-    if (activeMissingFilters.length > 0) {
+    // Age filter
+    if (ageFilter !== 'all') {
       filtered = filtered.filter(person => {
-        return activeMissingFilters.some(([step]) => {
-          const stepValue = person.steps[step as keyof typeof person.steps];
-          return !stepValue;
-        });
+        if (!person.birth_date) return false;
+        
+        const age = calculateAge(person.birth_date);
+        switch (ageFilter) {
+          case 'young': return age <= 25;
+          case 'adult': return age > 25 && age <= 50;
+          case 'senior': return age > 50;
+          default: return true;
+        }
       });
     }
 
-    return filtered;
+    // Role filter
+    if (roleFilter !== 'all') {
+      filtered = filtered.filter(person => {
+        switch (roleFilter) {
+          case 'leader': return person.is_leader;
+          case 'assistant': return person.is_assistant;
+          case 'discipled': return person.discipler_id;
+          case 'member': return !person.is_leader && !person.is_assistant;
+          default: return true;
+        }
+      });
+    }
+
+    setFilteredPeople(filtered);
   };
 
-  const filteredPeople = filterPeople();
-
-  const stepLabels = {
-    newBirth: 'Novo Nascimento',
-    initialFollowUp: 'ACI (Acompanhamento Inicial)',
-    coffeeWithPastor: 'Café com Pastor',
-    stationDNA: 'Estação DNA',
-    newCreature: 'Nova Criatura',
-    baptism: 'Batismo',
-    discipled: 'Discipulada',
+  const calculateAge = (birthDate: string) => {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
   };
 
-  const activeMissingFiltersCount = Object.values(missingFilters).filter(Boolean).length;
+  const clearFilters = () => {
+    setSearchTerm('');
+    setAgeFilter('all');
+    setRoleFilter('all');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Search className="h-5 w-5 mr-2" />
-            Filtro de Pessoas
+            <Filter className="h-5 w-5 mr-2" />
+            Filtros de Pessoas
           </CardTitle>
           <CardDescription>
-            Encontre pessoas que estão faltando etapas específicas do trilho do membro
+            Filtre e pesquise pessoas cadastradas no sistema
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div>
-              <h3 className="text-sm font-medium mb-3 flex items-center">
-                <AlertTriangle className="h-4 w-4 mr-2" />
-                Pessoas faltando etapas:
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {Object.entries(stepLabels).map(([step, label]) => (
-                  <div key={step} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={step}
-                      checked={missingFilters[step as keyof typeof missingFilters]}
-                      onCheckedChange={(checked) => 
-                        setMissingFilters(prev => ({
-                          ...prev,
-                          [step]: checked === true
-                        }))
-                      }
-                    />
-                    <label htmlFor={step} className="text-sm cursor-pointer">
-                      {label}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {activeMissingFiltersCount > 0 && (
-              <div className="flex flex-wrap gap-2">
-                <span className="text-sm text-gray-600">Filtros ativos:</span>
-                {Object.entries(missingFilters)
-                  .filter(([_, active]) => active)
-                  .map(([step]) => (
-                    <Badge key={step} variant="outline">
-                      Faltando: {stepLabels[step as keyof typeof stepLabels]}
-                    </Badge>
-                  ))}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Resultados da Pesquisa
-            <Badge variant="secondary" className="ml-2">
-              {filteredPeople.length} pessoas
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredPeople.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">
-                {activeMissingFiltersCount > 0 
-                  ? 'Nenhuma pessoa encontrada com os filtros selecionados'
-                  : 'Selecione filtros acima para encontrar pessoas'
-                }
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredPeople.map((person) => (
-                <PersonCard
-                  key={person.id}
-                  {...person}
+              <label className="block text-sm font-medium mb-2">Pesquisar</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Nome, contato ou endereço..."
+                  className="pl-10"
                 />
-              ))}
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-2">Faixa Etária</label>
+              <Select value={ageFilter} onValueChange={setAgeFilter}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as idades</SelectItem>
+                  <SelectItem value="young">Até 25 anos</SelectItem>
+                  <SelectItem value="adult">26 a 50 anos</SelectItem>
+                  <SelectItem value="senior">Acima de 50 anos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Função</label>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as funções</SelectItem>
+                  <SelectItem value="leader">Líderes</SelectItem>
+                  <SelectItem value="assistant">Auxiliares</SelectItem>
+                  <SelectItem value="discipled">Discipulados</SelectItem>
+                  <SelectItem value="member">Membros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-end">
+              <Button variant="outline" onClick={clearFilters} className="w-full">
+                Limpar Filtros
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <Users className="h-4 w-4" />
+              <span className="text-sm font-medium">{filteredPeople.length} pessoas encontradas</span>
+            </div>
+            <div className="flex space-x-2">
+              {searchTerm && (
+                <Badge variant="secondary">Pesquisa: {searchTerm}</Badge>
+              )}
+              {ageFilter !== 'all' && (
+                <Badge variant="secondary">Idade: {ageFilter}</Badge>
+              )}
+              {roleFilter !== 'all' && (
+                <Badge variant="secondary">Função: {roleFilter}</Badge>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredPeople.map((person) => (
+              <PersonCard
+                key={person.id}
+                id={person.id}
+                name={person.name}
+                contact={person.contact || ''}
+                address={person.address || ''}
+                birthDate={person.birth_date}
+                lifegroupId={person.lifegroup_id}
+                isLeader={person.is_leader}
+                isAssistant={person.is_assistant}
+                disciplerId={person.discipler_id}
+                steps={person.steps || {}}
+              />
+            ))}
+          </div>
+
+          {filteredPeople.length === 0 && (
+            <div className="text-center py-12">
+              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma pessoa encontrada</h3>
+              <p className="text-gray-600">Tente ajustar os filtros ou pesquisar por outros termos.</p>
             </div>
           )}
         </CardContent>

@@ -1,279 +1,119 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, ArrowRight, User } from 'lucide-react';
+import PersonCard from './PersonCard';
+import { UserCheck, Users } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DiscipledPeopleProps {
+  selectedArea: string;
   selectedSector: string;
   selectedLifegroup: string;
 }
 
-interface DiscipleRelation {
-  discipler: {
-    id: string;
-    name: string;
-    lifegroupId: string;
-    sectorId: string;
-  };
-  disciple: {
-    id: string;
-    name: string;
-    lifegroupId: string;
-    sectorId: string;
-  };
+interface Person {
+  id: string;
+  name: string;
+  contact: string;
+  address: string;
+  birth_date: string;
+  lifegroup_id: string;
+  is_leader: boolean;
+  is_assistant: boolean;
+  discipler_id?: string;
+  steps: any;
 }
 
-const DiscipledPeople: React.FC<DiscipledPeopleProps> = ({ selectedSector, selectedLifegroup }) => {
-  const userRole = localStorage.getItem('userRole') || 'user';
-  const [filterSector, setFilterSector] = useState<string>('all');
-  const [filterLifegroup, setFilterLifegroup] = useState<string>('all');
+const DiscipledPeople: React.FC<DiscipledPeopleProps> = ({
+  selectedArea,
+  selectedSector,
+  selectedLifegroup
+}) => {
+  const [discipledPeople, setDiscipledPeople] = useState<Person[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data de relacionamentos discipulador-discípulo
-  const discipleRelations: DiscipleRelation[] = [
-    {
-      discipler: { id: '1', name: 'João Silva', lifegroupId: '1', sectorId: '1' },
-      disciple: { id: '2', name: 'Maria Santos', lifegroupId: '1', sectorId: '1' }
-    },
-    {
-      discipler: { id: '1', name: 'João Silva', lifegroupId: '1', sectorId: '1' },
-      disciple: { id: '3', name: 'Pedro Costa', lifegroupId: '1', sectorId: '1' }
-    },
-    {
-      discipler: { id: '4', name: 'Ana Paula', lifegroupId: '2', sectorId: '2' },
-      disciple: { id: '5', name: 'Carlos Oliveira', lifegroupId: '2', sectorId: '2' }
-    },
-    {
-      discipler: { id: '6', name: 'Lucas Ferreira', lifegroupId: '2', sectorId: '2' },
-      disciple: { id: '7', name: 'Fernanda Lima', lifegroupId: '2', sectorId: '2' }
-    },
-  ];
+  useEffect(() => {
+    fetchDiscipledPeople();
+  }, [selectedArea, selectedSector, selectedLifegroup]);
 
-  const sectors = [
-    { id: '1', name: 'Setor Norte' },
-    { id: '2', name: 'Setor Sul' },
-  ];
+  const fetchDiscipledPeople = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('people')
+        .select('*')
+        .not('discipler_id', 'is', null);
 
-  const lifegroups = [
-    { id: '1', name: 'Lifegroup Alpha', sectorId: '1' },
-    { id: '2', name: 'Lifegroup Beta', sectorId: '2' },
-  ];
+      if (error) {
+        console.error('Error fetching discipled people:', error);
+        return;
+      }
 
-  const filterRelations = () => {
-    let filtered = discipleRelations;
-
-    // Aplicar filtros principais do dashboard
-    if (selectedSector !== 'all') {
-      filtered = filtered.filter(relation => 
-        relation.discipler.sectorId === selectedSector && 
-        relation.disciple.sectorId === selectedSector
-      );
+      setDiscipledPeople(data || []);
+    } catch (error) {
+      console.error('Error fetching discipled people:', error);
+    } finally {
+      setIsLoading(false);
     }
-
-    if (selectedLifegroup !== 'all') {
-      filtered = filtered.filter(relation => 
-        relation.discipler.lifegroupId === selectedLifegroup && 
-        relation.disciple.lifegroupId === selectedLifegroup
-      );
-    }
-
-    // Aplicar filtros específicos da aba
-    if (filterSector !== 'all') {
-      filtered = filtered.filter(relation => 
-        relation.discipler.sectorId === filterSector && 
-        relation.disciple.sectorId === filterSector
-      );
-    }
-
-    if (filterLifegroup !== 'all') {
-      filtered = filtered.filter(relation => 
-        relation.discipler.lifegroupId === filterLifegroup && 
-        relation.disciple.lifegroupId === filterLifegroup
-      );
-    }
-
-    return filtered;
   };
 
-  const getFilteredLifegroups = () => {
-    if (filterSector === 'all') return lifegroups;
-    return lifegroups.filter(lg => lg.sectorId === filterSector);
-  };
-
-  const groupBySector = () => {
-    const filtered = filterRelations();
-    const grouped: { [key: string]: DiscipleRelation[] } = {};
-    
-    filtered.forEach(relation => {
-      const sectorName = sectors.find(s => s.id === relation.discipler.sectorId)?.name || 'Setor Desconhecido';
-      if (!grouped[sectorName]) grouped[sectorName] = [];
-      grouped[sectorName].push(relation);
-    });
-    
-    return grouped;
-  };
-
-  const groupByLifegroup = () => {
-    const filtered = filterRelations();
-    const grouped: { [key: string]: DiscipleRelation[] } = {};
-    
-    filtered.forEach(relation => {
-      const lifegroupName = lifegroups.find(lg => lg.id === relation.discipler.lifegroupId)?.name || 'Lifegroup Desconhecido';
-      if (!grouped[lifegroupName]) grouped[lifegroupName] = [];
-      grouped[lifegroupName].push(relation);
-    });
-    
-    return grouped;
-  };
-
-  const filteredRelations = filterRelations();
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Users className="h-5 w-5 mr-2" />
+            <UserCheck className="h-5 w-5 mr-2" />
             Pessoas Discipuladas
           </CardTitle>
           <CardDescription>
-            Visualize os relacionamentos de discipulado organizados por setor e lifegroup
+            Lista de pessoas que estão sendo discipuladas
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex space-x-4">
-              {userRole === 'admin' && (
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-2">Filtrar por Setor</label>
-                  <Select value={filterSector} onValueChange={setFilterSector}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos os setores" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os setores</SelectItem>
-                      {sectors.map(sector => (
-                        <SelectItem key={sector.id} value={sector.id}>
-                          {sector.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-2">Filtrar por Lifegroup</label>
-                <Select value={filterLifegroup} onValueChange={setFilterLifegroup}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os lifegroups" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os lifegroups</SelectItem>
-                    {getFilteredLifegroups().map(lifegroup => (
-                      <SelectItem key={lifegroup.id} value={lifegroup.id}>
-                        {lifegroup.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
+          <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-2">
-              <Badge variant="outline">
-                Total de relacionamentos: {filteredRelations.length}
-              </Badge>
+              <Users className="h-4 w-4" />
+              <span className="text-sm font-medium">{discipledPeople.length} pessoas discipuladas</span>
             </div>
+            <Badge variant="default">{discipledPeople.length} Total</Badge>
           </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {discipledPeople.map((person) => (
+              <PersonCard
+                key={person.id}
+                id={person.id}
+                name={person.name}
+                contact={person.contact || ''}
+                address={person.address || ''}
+                birthDate={person.birth_date}
+                lifegroupId={person.lifegroup_id}
+                isLeader={person.is_leader}
+                isAssistant={person.is_assistant}
+                disciplerId={person.discipler_id}
+                steps={person.steps || {}}
+              />
+            ))}
+          </div>
+
+          {discipledPeople.length === 0 && (
+            <div className="text-center py-12">
+              <UserCheck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma pessoa discipulada</h3>
+              <p className="text-gray-600">Ainda não há pessoas sendo discipuladas no sistema.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      <Tabs defaultValue="sector" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="sector">Por Setor</TabsTrigger>
-          <TabsTrigger value="lifegroup">Por Lifegroup</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="sector">
-          <div className="space-y-4">
-            {Object.entries(groupBySector()).map(([sectorName, relations]) => (
-              <Card key={sectorName}>
-                <CardHeader>
-                  <CardTitle className="text-lg">{sectorName}</CardTitle>
-                  <CardDescription>
-                    {relations.length} relacionamento(s) de discipulado
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {relations.map((relation, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-4">
-                          <div className="flex items-center space-x-2">
-                            <User className="h-4 w-4 text-blue-600" />
-                            <span className="font-medium">{relation.discipler.name}</span>
-                            <Badge variant="outline" className="text-xs">Discipulador</Badge>
-                          </div>
-                          <ArrowRight className="h-4 w-4 text-gray-400" />
-                          <div className="flex items-center space-x-2">
-                            <User className="h-4 w-4 text-green-600" />
-                            <span>{relation.disciple.name}</span>
-                            <Badge variant="outline" className="text-xs">Discípulo</Badge>
-                          </div>
-                        </div>
-                        <Badge variant="secondary">
-                          {lifegroups.find(lg => lg.id === relation.discipler.lifegroupId)?.name}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="lifegroup">
-          <div className="space-y-4">
-            {Object.entries(groupByLifegroup()).map(([lifegroupName, relations]) => (
-              <Card key={lifegroupName}>
-                <CardHeader>
-                  <CardTitle className="text-lg">{lifegroupName}</CardTitle>
-                  <CardDescription>
-                    {relations.length} relacionamento(s) de discipulado
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {relations.map((relation, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-4">
-                          <div className="flex items-center space-x-2">
-                            <User className="h-4 w-4 text-blue-600" />
-                            <span className="font-medium">{relation.discipler.name}</span>
-                            <Badge variant="outline" className="text-xs">Discipulador</Badge>
-                          </div>
-                          <ArrowRight className="h-4 w-4 text-gray-400" />
-                          <div className="flex items-center space-x-2">
-                            <User className="h-4 w-4 text-green-600" />
-                            <span>{relation.disciple.name}</span>
-                            <Badge variant="outline" className="text-xs">Discípulo</Badge>
-                          </div>
-                        </div>
-                        <Badge variant="secondary">
-                          {sectors.find(s => s.id === relation.discipler.sectorId)?.name}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 };

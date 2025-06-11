@@ -1,139 +1,111 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, CheckCircle, Coffee, Heart, Zap, Waves, Star, UserX, UserCheck } from 'lucide-react';
+import { TrendingUp, Users, Building, MapPin } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DashboardStatsProps {
+  selectedArea: string;
   selectedSector: string;
   selectedLifegroup: string;
 }
 
-const DashboardStats: React.FC<DashboardStatsProps> = ({ selectedSector, selectedLifegroup }) => {
-  const userRole = localStorage.getItem('userRole') || 'user';
+const DashboardStats: React.FC<DashboardStatsProps> = ({
+  selectedArea,
+  selectedSector,
+  selectedLifegroup
+}) => {
+  const [stats, setStats] = useState({
+    totalAreas: 0,
+    totalSectors: 0,
+    totalLifegroups: 0,
+    totalPeople: 0
+  });
 
-  // Mock data baseada nos filtros selecionados
-  const getFilteredStats = () => {
-    if (selectedSector !== 'all' || selectedLifegroup !== 'all') {
-      return {
-        totalPeople: selectedLifegroup !== 'all' ? '8' : '15',
-        baptized: selectedLifegroup !== 'all' ? '3' : '6',
-        coffeeWithPastor: selectedLifegroup !== 'all' ? '5' : '9',
-        initialFollowUp: selectedLifegroup !== 'all' ? '6' : '11',
-        stationDNA: selectedLifegroup !== 'all' ? '4' : '7',
-        baptism: selectedLifegroup !== 'all' ? '3' : '6',
-        newCreature: selectedLifegroup !== 'all' ? '4' : '8',
-        withoutTopics: selectedLifegroup !== 'all' ? '2' : '3',
-        discipled: selectedLifegroup !== 'all' ? '5' : '9',
-        notDiscipled: selectedLifegroup !== 'all' ? '3' : '6',
-      };
+  useEffect(() => {
+    fetchStats();
+  }, [selectedArea, selectedSector, selectedLifegroup]);
+
+  const fetchStats = async () => {
+    try {
+      // Fetch areas
+      const { data: areas, error: areasError } = await supabase
+        .from('areas')
+        .select('*');
+
+      // Fetch sectors
+      const { data: sectors, error: sectorsError } = await supabase
+        .from('sectors')
+        .select('*');
+
+      // Fetch lifegroups
+      const { data: lifegroups, error: lifegroupsError } = await supabase
+        .from('lifegroups')
+        .select('*');
+
+      // Fetch people
+      const { data: people, error: peopleError } = await supabase
+        .from('people')
+        .select('*');
+
+      if (areasError || sectorsError || lifegroupsError || peopleError) {
+        console.error('Error fetching stats:', { areasError, sectorsError, lifegroupsError, peopleError });
+        return;
+      }
+
+      setStats({
+        totalAreas: areas?.length || 0,
+        totalSectors: sectors?.length || 0,
+        totalLifegroups: lifegroups?.length || 0,
+        totalPeople: people?.length || 0
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
     }
-
-    return {
-      totalPeople: '24',
-      baptized: '8',
-      coffeeWithPastor: '16',
-      initialFollowUp: '20',
-      stationDNA: '12',
-      baptism: '8',
-      newCreature: '14',
-      withoutTopics: '4',
-      discipled: '16',
-      notDiscipled: '8',
-    };
   };
 
-  const stats = getFilteredStats();
-
-  const statsConfig = [
+  const statsData = [
     {
-      title: 'Total de Pessoas Cadastradas',
-      value: stats.totalPeople,
-      description: 'Pessoas ativas nos lifegroups',
+      title: "Total de Áreas",
+      value: stats.totalAreas,
+      icon: Building,
+      description: "Áreas ativas"
+    },
+    {
+      title: "Total de Setores",
+      value: stats.totalSectors,
+      icon: MapPin,
+      description: "Setores ativos"
+    },
+    {
+      title: "Total de Lifegroups",
+      value: stats.totalLifegroups,
       icon: Users,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100',
+      description: "Lifegroups ativos"
     },
     {
-      title: 'Pessoas Discipuladas',
-      value: stats.discipled,
-      description: 'Com discipulador definido',
-      icon: UserCheck,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100',
-    },
-    {
-      title: 'Não Discipuladas',
-      value: stats.notDiscipled,
-      description: 'Sem discipulador definido',
-      icon: UserX,
-      color: 'text-red-600',
-      bgColor: 'bg-red-100',
-    },
-    {
-      title: 'Sem Nenhum Tópico',
-      value: stats.withoutTopics,
-      description: 'Não começaram trilho',
-      icon: UserX,
-      color: 'text-gray-600',
-      bgColor: 'bg-gray-100',
-    },
-    {
-      title: 'Café com Pastor',
-      value: stats.coffeeWithPastor,
-      description: 'Participaram do café',
-      icon: Coffee,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-100',
-    },
-    {
-      title: 'ACI (Acompanhamento Inicial)',
-      value: stats.initialFollowUp,
-      description: 'Seguimento inicial completo',
-      icon: Heart,
-      color: 'text-red-600',
-      bgColor: 'bg-red-100',
-    },
-    {
-      title: 'Estação DNA',
-      value: stats.stationDNA,
-      description: 'Completaram Station DNA',
-      icon: Zap,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-100',
-    },
-    {
-      title: 'Nova Criatura',
-      value: stats.newCreature,
-      description: 'Curso Nova Criatura',
-      icon: Star,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100',
-    },
-    {
-      title: 'Batismo',
-      value: stats.baptized,
-      description: 'Realizaram o batismo',
-      icon: Waves,
-      color: 'text-cyan-600',
-      bgColor: 'bg-cyan-100',
-    },
+      title: "Total de Pessoas",
+      value: stats.totalPeople,
+      icon: TrendingUp,
+      description: "Pessoas cadastradas"
+    }
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-9 gap-4 mb-8">
-      {statsConfig.map((stat, index) => (
-        <Card key={index} className="hover:shadow-lg transition-shadow duration-200">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      {statsData.map((stat, index) => (
+        <Card key={index}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-gray-600 leading-tight">
+            <CardTitle className="text-sm font-medium">
               {stat.title}
             </CardTitle>
-            <div className={`${stat.bgColor} p-2 rounded-lg`}>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </div>
+            <stat.icon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-            <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
+            <div className="text-2xl font-bold">{stat.value}</div>
+            <p className="text-xs text-muted-foreground">
+              {stat.description}
+            </p>
           </CardContent>
         </Card>
       ))}

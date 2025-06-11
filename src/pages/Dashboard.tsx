@@ -13,7 +13,28 @@ import PeopleFilters from '@/components/PeopleFilters';
 import DiscipledPeople from '@/components/DiscipledPeople';
 import UserProfile from '@/components/UserProfile';
 import ReportGenerator from '@/components/ReportGenerator';
-import { LogOut, Plus, Users, TrendingUp, Heart, Filter, Settings, User, FileText, UserCheck, Menu } from 'lucide-react';
+import { 
+  LogOut, 
+  Plus, 
+  Users, 
+  TrendingUp, 
+  Heart, 
+  Filter, 
+  Settings, 
+  User, 
+  FileText, 
+  UserCheck, 
+  Menu,
+  Building
+} from 'lucide-react';
+import {
+  Menubar,
+  MenubarContent,
+  MenubarItem,
+  MenubarMenu,
+  MenubarSeparator,
+  MenubarTrigger,
+} from "@/components/ui/menubar";
 
 const Dashboard = () => {
   const { user, isLoading, userRole, signOut } = useAuth();
@@ -21,6 +42,7 @@ const Dashboard = () => {
   const [selectedArea, setSelectedArea] = useState<string>('all');
   const [selectedSector, setSelectedSector] = useState<string>('all');
   const [selectedLifegroup, setSelectedLifegroup] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState('hierarchy');
 
   if (isLoading) {
     return (
@@ -53,13 +75,43 @@ const Dashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Button variant="ghost" size="sm" className="mr-2 lg:hidden">
-                <Menu className="h-5 w-5" />
-              </Button>
-              <Heart className="h-8 w-8 text-blue-600 mr-3" />
-              <div className="text-left">
-                <h1 className="text-xl font-semibold text-gray-900">START FORTALEZA</h1>
-                <p className="text-xs text-gray-600">Sistema de Gestão</p>
+              <Menubar className="border-none bg-transparent p-0 h-auto">
+                <MenubarMenu>
+                  <MenubarTrigger className="p-2 hover:bg-gray-100 rounded-md">
+                    <Menu className="h-5 w-5" />
+                  </MenubarTrigger>
+                  <MenubarContent>
+                    <MenubarItem onClick={() => setActiveTab('profile')}>
+                      <User className="h-4 w-4 mr-2" />
+                      Perfil
+                    </MenubarItem>
+                    <MenubarItem onClick={() => setActiveTab('discipled-people')}>
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      Pessoas Discipuladas
+                    </MenubarItem>
+                    <MenubarItem onClick={() => setActiveTab('reports')}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Relatórios
+                    </MenubarItem>
+                    <MenubarItem onClick={() => setActiveTab('people-filters')}>
+                      <Filter className="h-4 w-4 mr-2" />
+                      Filtro de Pessoas
+                    </MenubarItem>
+                    <MenubarSeparator />
+                    <MenubarItem onClick={signOut}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </MenubarItem>
+                  </MenubarContent>
+                </MenubarMenu>
+              </Menubar>
+              
+              <div className="flex items-center ml-3">
+                <Users className="h-8 w-8 text-blue-600 mr-3" />
+                <div className="text-left">
+                  <h1 className="text-xl font-semibold text-gray-900">DISTRITO START</h1>
+                  <p className="text-xs text-gray-600">Sistema de Gestão</p>
+                </div>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -144,7 +196,7 @@ const Dashboard = () => {
           selectedLifegroup={selectedLifegroup}
         />
 
-        <Tabs defaultValue="hierarchy" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="hierarchy">Hierarquia</TabsTrigger>
             <TabsTrigger value="people-filters">Filtro de Pessoas</TabsTrigger>
