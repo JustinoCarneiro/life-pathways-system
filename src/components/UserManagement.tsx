@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,18 +12,6 @@ import { Users, Plus, Edit, Trash2, Shield, Mail, Key, Loader2 } from 'lucide-re
 import type { Database } from '@/integrations/supabase/types';
 
 type UserRole = Database['public']['Enums']['user_role'];
-
-interface UserRoleData {
-  role: UserRole;
-}
-
-interface ProfileData {
-  id: string;
-  full_name: string;
-  contact?: string;
-  created_at: string;
-  user_roles: UserRoleData[];
-}
 
 interface User {
   id: string;
@@ -61,20 +50,19 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      // Fetch users from auth.users via a custom query that joins with profiles and user_roles
-      const { data, error } = await supabase
+      // Fetch profiles first
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select(`
-          id,
-          full_name,
-          contact,
-          created_at,
-          user_roles (
-            role
-          )
-        `);
+        .select('id, full_name, contact, created_at');
 
-      if (error) throw error;
+      if (profilesError) throw profilesError;
+
+      // Fetch user roles separately
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      if (rolesError) throw rolesError;
 
       // Get user emails from auth metadata (this requires admin privileges)
       const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
@@ -82,26 +70,30 @@ const UserManagement = () => {
       if (authError) {
         console.error('Error fetching auth users:', authError);
         // If we can't fetch auth users, just show profiles without emails
-        const usersWithoutEmails = (data as ProfileData[])?.map(profile => ({
-          id: profile.id,
-          email: 'Email not available',
-          full_name: profile.full_name,
-          contact: profile.contact,
-          role: profile.user_roles?.[0]?.role as UserRole,
-          created_at: profile.created_at,
-        })) || [];
+        const usersWithoutEmails = profilesData?.map(profile => {
+          const userRole = rolesData?.find(role => role.user_id === profile.id);
+          return {
+            id: profile.id,
+            email: 'Email not available',
+            full_name: profile.full_name,
+            contact: profile.contact,
+            role: userRole?.role as UserRole,
+            created_at: profile.created_at,
+          };
+        }) || [];
         setUsers(usersWithoutEmails);
         return;
       }
 
-      const usersWithEmails = (data as ProfileData[])?.map(profile => {
+      const usersWithEmails = profilesData?.map(profile => {
         const authUser = authUsers.users.find(u => u.id === profile.id);
+        const userRole = rolesData?.find(role => role.user_id === profile.id);
         return {
           id: profile.id,
           email: authUser?.email || 'No email',
           full_name: profile.full_name,
           contact: profile.contact,
-          role: profile.user_roles?.[0]?.role as UserRole,
+          role: userRole?.role as UserRole,
           created_at: profile.created_at,
         };
       }) || [];

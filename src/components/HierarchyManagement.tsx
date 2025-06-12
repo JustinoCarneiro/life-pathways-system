@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Building, MapPin, Users, Plus, Edit, Trash2, User } from 'lucide-react';
+import { Building, MapPin, Users, Plus, Edit, Trash2, User, ChevronDown, ChevronRight } from 'lucide-react';
 import PersonRegistrationForm from './PersonRegistrationForm';
 
 interface Area {
@@ -69,6 +69,9 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
   const [people, setPeople] = useState<Person[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showPersonForm, setShowPersonForm] = useState(false);
+  const [expandedAreas, setExpandedAreas] = useState<string[]>([]);
+  const [expandedSectors, setExpandedSectors] = useState<string[]>([]);
+  const [expandedLifegroups, setExpandedLifegroups] = useState<string[]>([]);
   const [newItemData, setNewItemData] = useState({
     name: '',
     type: 'area' as 'area' | 'sector' | 'lifegroup',
@@ -205,6 +208,30 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
     }
   };
 
+  const toggleArea = (areaId: string) => {
+    setExpandedAreas(prev => 
+      prev.includes(areaId) 
+        ? prev.filter(id => id !== areaId)
+        : [...prev, areaId]
+    );
+  };
+
+  const toggleSector = (sectorId: string) => {
+    setExpandedSectors(prev => 
+      prev.includes(sectorId) 
+        ? prev.filter(id => id !== sectorId)
+        : [...prev, sectorId]
+    );
+  };
+
+  const toggleLifegroup = (lifegroupId: string) => {
+    setExpandedLifegroups(prev => 
+      prev.includes(lifegroupId) 
+        ? prev.filter(id => id !== lifegroupId)
+        : [...prev, lifegroupId]
+    );
+  };
+
   const canEdit = () => {
     return userRole === 'admin' || userRole === 'area_leader' || userRole === 'sector_leader' || userRole === 'lifegroup_leader';
   };
@@ -227,10 +254,10 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center">
             <Building className="h-5 w-5 mr-2" />
-            Gestão de Hierarquia
+            Hierarquia: Área → Setor → Lifegroup → Pessoas
           </CardTitle>
           <CardDescription>
-            Gerencie áreas, setores, lifegroups e pessoas do DISTRITO START
+            Visualize e gerencie toda a estrutura hierárquica do DISTRITO START
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -332,7 +359,7 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
           )}
 
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold">Hierarquia Completa</h3>
+            <h3 className="text-lg font-semibold">Estrutura Hierárquica Completa</h3>
             {canEdit() && (
               <Button onClick={() => setShowPersonForm(true)} size="sm">
                 <User className="h-4 w-4 mr-2" />
@@ -341,98 +368,137 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
             )}
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             {areas.map((area) => {
               const areaSectors = sectors.filter(s => s.area_id === area.id);
+              const totalPeopleInArea = areaSectors.reduce((total, sector) => {
+                const sectorLifegroups = lifegroups.filter(l => l.sector_id === sector.id);
+                return total + sectorLifegroups.reduce((lgTotal, lg) => {
+                  return lgTotal + people.filter(p => p.lifegroup_id === lg.id).length;
+                }, 0);
+              }, 0);
               
               return (
-                <div key={area.id} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-4">
+                <div key={area.id} className="border rounded-lg p-4 bg-blue-50">
+                  <div 
+                    className="flex items-center justify-between cursor-pointer"
+                    onClick={() => toggleArea(area.id)}
+                  >
                     <div className="flex items-center">
+                      {expandedAreas.includes(area.id) ? 
+                        <ChevronDown className="h-5 w-5 mr-2" /> : 
+                        <ChevronRight className="h-5 w-5 mr-2" />
+                      }
                       <Building className="h-5 w-5 mr-2 text-blue-600" />
                       <h3 className="font-semibold text-lg">{area.name}</h3>
-                      <Badge variant="outline" className="ml-2">Área</Badge>
+                      <Badge variant="default" className="ml-2">ÁREA</Badge>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="secondary">{areaSectors.length} setores</Badge>
+                      <Badge variant="outline">{totalPeopleInArea} pessoas</Badge>
                       {canEdit() && (
-                        <Button size="sm" variant="outline">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canDelete() && (
-                        <Button size="sm" variant="outline">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex space-x-1">
+                          <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          {canDelete() && (
+                            <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  {areaSectors.length > 0 && (
-                    <div className="ml-6 space-y-4">
+                  {expandedAreas.includes(area.id) && areaSectors.length > 0 && (
+                    <div className="mt-4 ml-6 space-y-3">
                       {areaSectors.map((sector) => {
                         const sectorLifegroups = lifegroups.filter(l => l.sector_id === sector.id);
+                        const totalPeopleInSector = sectorLifegroups.reduce((total, lg) => {
+                          return total + people.filter(p => p.lifegroup_id === lg.id).length;
+                        }, 0);
                         
                         return (
-                          <div key={sector.id} className="border-l-2 border-gray-200 pl-4">
-                            <div className="flex items-center justify-between mb-2">
+                          <div key={sector.id} className="border rounded-lg p-3 bg-green-50">
+                            <div 
+                              className="flex items-center justify-between cursor-pointer"
+                              onClick={() => toggleSector(sector.id)}
+                            >
                               <div className="flex items-center">
+                                {expandedSectors.includes(sector.id) ? 
+                                  <ChevronDown className="h-4 w-4 mr-2" /> : 
+                                  <ChevronRight className="h-4 w-4 mr-2" />
+                                }
                                 <MapPin className="h-4 w-4 mr-2 text-green-600" />
                                 <h4 className="font-medium">{sector.name}</h4>
-                                <Badge variant="outline" className="ml-2">Setor</Badge>
+                                <Badge variant="secondary" className="ml-2">SETOR</Badge>
                               </div>
-                              <div className="flex space-x-2">
+                              <div className="flex items-center space-x-2">
+                                <Badge variant="secondary">{sectorLifegroups.length} lifegroups</Badge>
+                                <Badge variant="outline">{totalPeopleInSector} pessoas</Badge>
                                 {canEdit() && (
-                                  <Button size="sm" variant="outline">
-                                    <Edit className="h-3 w-3" />
-                                  </Button>
-                                )}
-                                {canDelete() && (
-                                  <Button size="sm" variant="outline">
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
+                                  <div className="flex space-x-1">
+                                    <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                    {canDelete() && (
+                                      <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </div>
 
-                            {sectorLifegroups.length > 0 && (
-                              <div className="ml-6 space-y-2">
+                            {expandedSectors.includes(sector.id) && sectorLifegroups.length > 0 && (
+                              <div className="mt-3 ml-6 space-y-2">
                                 {sectorLifegroups.map((lifegroup) => {
                                   const lifegroupPeople = people.filter(p => p.lifegroup_id === lifegroup.id);
                                   
                                   return (
-                                    <div key={lifegroup.id} className="bg-gray-50 rounded p-3">
-                                      <div className="flex items-center justify-between mb-2">
+                                    <div key={lifegroup.id} className="border rounded-lg p-3 bg-purple-50">
+                                      <div 
+                                        className="flex items-center justify-between cursor-pointer"
+                                        onClick={() => toggleLifegroup(lifegroup.id)}
+                                      >
                                         <div className="flex items-center">
+                                          {expandedLifegroups.includes(lifegroup.id) ? 
+                                            <ChevronDown className="h-4 w-4 mr-2" /> : 
+                                            <ChevronRight className="h-4 w-4 mr-2" />
+                                          }
                                           <Users className="h-4 w-4 mr-2 text-purple-600" />
                                           <span className="text-sm font-medium">{lifegroup.name}</span>
-                                          <Badge variant="outline" className="ml-2">Lifegroup</Badge>
-                                          <Badge variant="secondary" className="ml-2">
-                                            {lifegroupPeople.length} pessoas
-                                          </Badge>
+                                          <Badge variant="outline" className="ml-2">LIFEGROUP</Badge>
                                         </div>
-                                        <div className="flex space-x-2">
+                                        <div className="flex items-center space-x-2">
+                                          <Badge variant="outline">{lifegroupPeople.length} pessoas</Badge>
                                           {canEdit() && (
-                                            <Button size="sm" variant="outline">
-                                              <Edit className="h-3 w-3" />
-                                            </Button>
-                                          )}
-                                          {canDelete() && (
-                                            <Button size="sm" variant="outline">
-                                              <Trash2 className="h-3 w-3" />
-                                            </Button>
+                                            <div className="flex space-x-1">
+                                              <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                                                <Edit className="h-3 w-3" />
+                                              </Button>
+                                              {canDelete() && (
+                                                <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                                                  <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                              )}
+                                            </div>
                                           )}
                                         </div>
                                       </div>
                                       
-                                      {lifegroupPeople.length > 0 && (
-                                        <div className="ml-6 mt-2 space-y-1">
+                                      {expandedLifegroups.includes(lifegroup.id) && lifegroupPeople.length > 0 && (
+                                        <div className="mt-3 ml-6 space-y-1">
                                           {lifegroupPeople.map((person) => (
-                                            <div key={person.id} className="flex items-center justify-between py-1 px-2 bg-white rounded text-xs">
+                                            <div key={person.id} className="flex items-center justify-between py-2 px-3 bg-white rounded border text-sm">
                                               <div className="flex items-center">
                                                 <User className="h-3 w-3 mr-2 text-gray-500" />
-                                                <span>{person.name}</span>
-                                                {person.is_leader && <span className="ml-1 text-yellow-500">⭐</span>}
-                                                {person.is_assistant && <span className="ml-1 text-blue-500">🤚</span>}
+                                                <span className="font-medium">{person.name}</span>
+                                                {person.is_leader && <span className="ml-2 text-yellow-500" title="Líder">👑</span>}
+                                                {person.is_assistant && <span className="ml-1 text-blue-500" title="Auxiliar">🤚</span>}
+                                                <span className="ml-2 text-gray-500">• {person.contact}</span>
                                               </div>
                                               {canEdit() && (
                                                 <div className="flex space-x-1">
