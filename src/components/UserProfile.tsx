@@ -6,48 +6,108 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { User, Mail, Phone, Key, Edit, Save, CheckCircle } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { User, Mail, Phone, Key, Edit, Save, CheckCircle, Eye, EyeOff } from 'lucide-react';
 
 const UserProfile = () => {
   const { toast } = useToast();
-  const userRole = localStorage.getItem('userRole') || 'user';
-  const userName = localStorage.getItem('userName') || 'Usuário';
+  const { user, userRole } = useAuth();
   
   const [isEditing, setIsEditing] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
   const [profileData, setProfileData] = useState({
-    fullName: userName,
-    email: 'usuario@exemplo.com',
-    contact: '(85) 99999-9999',
+    fullName: user?.user_metadata?.full_name || 'Usuário',
+    email: user?.email || 'usuario@exemplo.com',
+    contact: user?.user_metadata?.contact || '(85) 99999-9999',
     sector: userRole === 'admin' ? 'Todos os setores' : 'Setor Norte',
     lifegroup: userRole === 'admin' ? 'Todos os lifegroups' : 'Lifegroup Alpha',
   });
 
-  const handleSave = () => {
-    // Simular salvamento
-    localStorage.setItem('userName', profileData.fullName);
-    
-    toast({
-      title: "Perfil atualizado!",
-      description: "Suas informações foram salvas com sucesso.",
-    });
-    
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          full_name: profileData.fullName,
+          contact: profileData.contact
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Perfil atualizado!",
+        description: "Suas informações foram salvas com sucesso.",
+      });
+      
+      setIsEditing(false);
+    } catch (error) {
+      toast({
+        title: "Erro ao atualizar perfil",
+        description: "Não foi possível salvar as alterações.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleRequestNewPassword = () => {
-    // Simular envio de nova senha
-    const newPassword = Math.random().toString(36).substring(2, 8).toUpperCase();
-    
-    toast({
-      title: "Nova senha enviada!",
-      description: `Uma nova senha foi enviada para ${profileData.email}. Nova senha: ${newPassword}`,
-    });
+  const handlePasswordChange = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: "Senhas não coincidem",
+        description: "A nova senha e a confirmação devem ser iguais.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast({
+        title: "Senha muito curta",
+        description: "A nova senha deve ter pelo menos 6 caracteres.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Senha alterada com sucesso!",
+        description: "Sua senha foi atualizada.",
+      });
+
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+      setShowPasswordChange(false);
+    } catch (error) {
+      toast({
+        title: "Erro ao alterar senha",
+        description: "Não foi possível alterar sua senha.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getRoleLabel = () => {
     switch (userRole) {
       case 'admin': return 'Administrador';
+      case 'area_leader': return 'Líder de Área';
       case 'sector_leader': return 'Líder de Setor';
+      case 'lifegroup_leader': return 'Líder de Lifegroup';
       default: return 'Usuário';
     }
   };
@@ -61,6 +121,13 @@ const UserProfile = () => {
     'Batismo',
     'Discipulada'
   ];
+
+  const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
+  };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -101,8 +168,7 @@ const UserProfile = () => {
                     id="email"
                     type="email"
                     value={profileData.email}
-                    onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
-                    disabled={!isEditing}
+                    disabled
                   />
                   <Mail className="h-4 w-4 mt-3 text-gray-400" />
                 </div>
@@ -140,18 +206,70 @@ const UserProfile = () => {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={handleRequestNewPassword}
+                    onClick={() => setShowPasswordChange(true)}
                   >
                     <Key className="h-4 w-4 mr-2" />
-                    Nova Senha
+                    Alterar
                   </Button>
                 </div>
-                <p className="text-xs text-gray-500">
-                  Clique em "Nova Senha" para receber uma senha aleatória de 6 dígitos no seu email
-                </p>
               </div>
             </div>
           </div>
+
+          {showPasswordChange && (
+            <div className="border rounded-lg p-4 bg-gray-50">
+              <h3 className="font-semibold mb-4">Alterar Senha</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="newPassword">Nova Senha</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="newPassword"
+                      type={showPasswords.new ? "text" : "password"}
+                      value={passwordData.newPassword}
+                      onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                      placeholder="Digite sua nova senha"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => togglePasswordVisibility('new')}
+                    >
+                      {showPasswords.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="confirmPassword"
+                      type={showPasswords.confirm ? "text" : "password"}
+                      value={passwordData.confirmPassword}
+                      onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                      placeholder="Confirme sua nova senha"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => togglePasswordVisibility('confirm')}
+                    >
+                      {showPasswords.confirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <Button onClick={handlePasswordChange}>
+                    <Save className="h-4 w-4 mr-2" />
+                    Salvar Nova Senha
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowPasswordChange(false)}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="border-t pt-6">
             <h3 className="text-lg font-semibold mb-4">Tópicos Necessários</h3>

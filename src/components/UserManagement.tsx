@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,8 +44,26 @@ const UserManagement = () => {
     if (userRole === 'admin') {
       fetchUsers();
       fetchSectors();
+      // Generate password for admin user
+      generateAdminPassword();
     }
   }, [userRole]);
+
+  const generateAdminPassword = async () => {
+    try {
+      // Generate a strong random password for the admin
+      const adminPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase() + '123!';
+      
+      console.log(`Password for admin samuelvitoralves14@gmail.com: ${adminPassword}`);
+      
+      toast({
+        title: "Senha do Administrador Gerada",
+        description: `Senha para samuelvitoralves14@gmail.com: ${adminPassword}`,
+      });
+    } catch (error) {
+      console.error('Error generating admin password:', error);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -76,7 +93,7 @@ const UserManagement = () => {
             id: profile.id,
             email: 'Email not available',
             full_name: profile.full_name,
-            contact: profile.contact,
+            contact: profile.contact || '',
             role: userRole?.role as UserRole,
             created_at: profile.created_at,
           };
@@ -92,7 +109,7 @@ const UserManagement = () => {
           id: profile.id,
           email: authUser?.email || 'No email',
           full_name: profile.full_name,
-          contact: profile.contact,
+          contact: profile.contact || '',
           role: userRole?.role as UserRole,
           created_at: profile.created_at,
         };

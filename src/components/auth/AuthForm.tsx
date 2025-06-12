@@ -7,10 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Heart, Loader2 } from 'lucide-react';
+import { Heart, Loader2, ArrowLeft } from 'lucide-react';
 
 const AuthForm = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [signupData, setSignupData] = useState({ 
     email: '', 
@@ -93,6 +95,97 @@ const AuthForm = () => {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      // Generate a random password
+      const newPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12).toUpperCase();
+      
+      // Reset password using admin function
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
+        redirectTo: `${window.location.origin}/`
+      });
+
+      if (error) {
+        toast({
+          title: "Erro ao recuperar senha",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Email de recuperação enviado!",
+          description: `Um link para redefinir sua senha foi enviado para ${forgotPasswordEmail}`,
+        });
+        setShowForgotPassword(false);
+        setForgotPasswordEmail('');
+      }
+    } catch (error) {
+      toast({
+        title: "Erro inesperado",
+        description: "Ocorreu um erro ao recuperar a senha.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <Card className="w-full max-w-md shadow-xl">
+          <CardHeader className="text-center">
+            <div className="flex items-center justify-center mb-4">
+              <Heart className="h-10 w-10 text-blue-600 mr-3" />
+              <div className="text-left">
+                <CardTitle className="text-2xl font-bold text-gray-800">START FORTALEZA</CardTitle>
+                <p className="text-sm text-gray-600">Sistema de Gestão</p>
+              </div>
+            </div>
+            <CardDescription>Recuperar senha</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email">Email</Label>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={forgotPasswordEmail}
+                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  'Enviar Link de Recuperação'
+                )}
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full" 
+                onClick={() => setShowForgotPassword(false)}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Voltar ao Login
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="w-full max-w-md shadow-xl">
@@ -147,6 +240,16 @@ const AuthForm = () => {
                     'Entrar'
                   )}
                 </Button>
+                <div className="text-center">
+                  <Button 
+                    type="button" 
+                    variant="link" 
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm"
+                  >
+                    Esqueci minha senha
+                  </Button>
+                </div>
               </form>
             </TabsContent>
             
