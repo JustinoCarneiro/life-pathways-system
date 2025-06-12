@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Building, MapPin, Users, Plus, Edit, Trash2, User, ChevronDown, ChevronRight } from 'lucide-react';
+import { Building, MapPin, Users, Plus, Edit, Trash2, User, ChevronDown, ChevronRight, Building2, Navigation, Crown } from 'lucide-react';
 import PersonRegistrationForm from './PersonRegistrationForm';
 
 interface Area {
@@ -72,12 +72,19 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
   const [expandedAreas, setExpandedAreas] = useState<string[]>([]);
   const [expandedSectors, setExpandedSectors] = useState<string[]>([]);
   const [expandedLifegroups, setExpandedLifegroups] = useState<string[]>([]);
+  const [editingItem, setEditingItem] = useState<{id: string, name: string, type: string} | null>(null);
   const [newItemData, setNewItemData] = useState({
     name: '',
     type: 'area' as 'area' | 'sector' | 'lifegroup',
     parentId: '',
   });
   const { toast } = useToast();
+
+  const areaIcons = [Building, Building2, Crown, Navigation];
+  const sectorIcons = [MapPin, Navigation, Building2];
+  const lifegroupIcons = [Users, Crown, User];
+
+  const [selectedIcons, setSelectedIcons] = useState<{[key: string]: number}>({});
 
   useEffect(() => {
     fetchHierarchyData();
@@ -208,6 +215,92 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
     }
   };
 
+  const handleUpdateItem = async (id: string, name: string, type: string) => {
+    try {
+      let error;
+      
+      if (type === 'area') {
+        ({ error } = await supabase
+          .from('areas')
+          .update({ name })
+          .eq('id', id));
+      } else if (type === 'sector') {
+        ({ error } = await supabase
+          .from('sectors')
+          .update({ name })
+          .eq('id', id));
+      } else if (type === 'lifegroup') {
+        ({ error } = await supabase
+          .from('lifegroups')
+          .update({ name })
+          .eq('id', id));
+      }
+
+      if (error) throw error;
+
+      toast({
+        title: "Item atualizado",
+        description: "O nome foi atualizado com sucesso.",
+      });
+
+      setEditingItem(null);
+      fetchHierarchyData();
+    } catch (error) {
+      console.error('Error updating item:', error);
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar o item.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteItem = async (id: string, type: string, name: string) => {
+    if (!confirm(`Tem certeza que deseja excluir "${name}"?`)) return;
+
+    try {
+      let error;
+      
+      if (type === 'area') {
+        ({ error } = await supabase
+          .from('areas')
+          .delete()
+          .eq('id', id));
+      } else if (type === 'sector') {
+        ({ error } = await supabase
+          .from('sectors')
+          .delete()
+          .eq('id', id));
+      } else if (type === 'lifegroup') {
+        ({ error } = await supabase
+          .from('lifegroups')
+          .delete()
+          .eq('id', id));
+      } else if (type === 'person') {
+        ({ error } = await supabase
+          .from('people')
+          .delete()
+          .eq('id', id));
+      }
+
+      if (error) throw error;
+
+      toast({
+        title: "Item excluído",
+        description: `"${name}" foi removido com sucesso.`,
+      });
+
+      fetchHierarchyData();
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      toast({
+        title: "Erro ao excluir",
+        description: "Não foi possível excluir o item.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const toggleArea = (areaId: string) => {
     setExpandedAreas(prev => 
       prev.includes(areaId) 
@@ -233,11 +326,54 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
   };
 
   const canEdit = () => {
-    return userRole === 'admin' || userRole === 'area_leader' || userRole === 'sector_leader' || userRole === 'lifegroup_leader';
+    return userRole === 'admin';
   };
 
   const canDelete = () => {
     return userRole === 'admin';
+  };
+
+  const getIcon = (type: string, itemId: string) => {
+    const iconIndex = selectedIcons[itemId] || 0;
+    let icons;
+    
+    switch (type) {
+      case 'area':
+        icons = areaIcons;
+        break;
+      case 'sector':
+        icons = sectorIcons;
+        break;
+      case 'lifegroup':
+        icons = lifegroupIcons;
+        break;
+      default:
+        return Building;
+    }
+    
+    return icons[iconIndex % icons.length];
+  };
+
+  const cycleIcon = (itemId: string, type: string) => {
+    let maxIcons;
+    switch (type) {
+      case 'area':
+        maxIcons = areaIcons.length;
+        break;
+      case 'sector':
+        maxIcons = sectorIcons.length;
+        break;
+      case 'lifegroup':
+        maxIcons = lifegroupIcons.length;
+        break;
+      default:
+        maxIcons = 1;
+    }
+    
+    setSelectedIcons(prev => ({
+      ...prev,
+      [itemId]: ((prev[itemId] || 0) + 1) % maxIcons
+    }));
   };
 
   if (isLoading) {
@@ -252,13 +388,25 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Building className="h-5 w-5 mr-2" />
-            Hierarquia: Área → Setor → Lifegroup → Pessoas
-          </CardTitle>
-          <CardDescription>
-            Visualize e gerencie toda a estrutura hierárquica do DISTRITO START
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="flex items-center">
+                <Building className="h-5 w-5 mr-2" />
+                Hierarquia: Área → Setor → Lifegroup → Pessoas
+              </CardTitle>
+              <CardDescription>
+                Visualize e gerencie toda a estrutura hierárquica do DISTRITO START
+              </CardDescription>
+            </div>
+            {canEdit() && (
+              <div className="flex space-x-2">
+                <Button onClick={() => setShowPersonForm(true)} size="sm">
+                  <User className="h-4 w-4 mr-2" />
+                  Adicionar Pessoa
+                </Button>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {showPersonForm && (
@@ -358,16 +506,6 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
             </div>
           )}
 
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold">Estrutura Hierárquica Completa</h3>
-            {canEdit() && (
-              <Button onClick={() => setShowPersonForm(true)} size="sm">
-                <User className="h-4 w-4 mr-2" />
-                Cadastrar Pessoa
-              </Button>
-            )}
-          </div>
-
           <div className="space-y-4">
             {areas.map((area) => {
               const areaSectors = sectors.filter(s => s.area_id === area.id);
@@ -377,6 +515,8 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
                   return lgTotal + people.filter(p => p.lifegroup_id === lg.id).length;
                 }, 0);
               }, 0);
+              
+              const AreaIcon = getIcon('area', area.id);
               
               return (
                 <div key={area.id} className="border rounded-lg p-4 bg-blue-50">
@@ -389,20 +529,52 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
                         <ChevronDown className="h-5 w-5 mr-2" /> : 
                         <ChevronRight className="h-5 w-5 mr-2" />
                       }
-                      <Building className="h-5 w-5 mr-2 text-blue-600" />
-                      <h3 className="font-semibold text-lg">{area.name}</h3>
-                      <Badge variant="default" className="ml-2">ÁREA</Badge>
+                      <div 
+                        className="cursor-pointer mr-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (canEdit()) cycleIcon(area.id, 'area');
+                        }}
+                      >
+                        <AreaIcon className="h-5 w-5 text-blue-600" />
+                      </div>
+                      {editingItem?.id === area.id ? (
+                        <div className="flex items-center space-x-2">
+                          <Input
+                            value={editingItem.name}
+                            onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
+                            className="max-w-xs"
+                          />
+                          <Button size="sm" onClick={() => handleUpdateItem(area.id, editingItem.name, 'area')}>
+                            Salvar
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <h3 className="font-semibold text-lg">{area.name}</h3>
+                          <Badge variant="default" className="ml-2">ÁREA</Badge>
+                        </>
+                      )}
                     </div>
                     <div className="flex items-center space-x-2">
                       <Badge variant="secondary">{areaSectors.length} setores</Badge>
                       <Badge variant="outline">{totalPeopleInArea} pessoas</Badge>
                       {canEdit() && (
                         <div className="flex space-x-1">
-                          <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" variant="outline" onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingItem({id: area.id, name: area.name, type: 'area'});
+                          }}>
                             <Edit className="h-4 w-4" />
                           </Button>
                           {canDelete() && (
-                            <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                            <Button size="sm" variant="outline" onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteItem(area.id, 'area', area.name);
+                            }}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
@@ -419,6 +591,8 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
                           return total + people.filter(p => p.lifegroup_id === lg.id).length;
                         }, 0);
                         
+                        const SectorIcon = getIcon('sector', sector.id);
+                        
                         return (
                           <div key={sector.id} className="border rounded-lg p-3 bg-green-50">
                             <div 
@@ -430,20 +604,52 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
                                   <ChevronDown className="h-4 w-4 mr-2" /> : 
                                   <ChevronRight className="h-4 w-4 mr-2" />
                                 }
-                                <MapPin className="h-4 w-4 mr-2 text-green-600" />
-                                <h4 className="font-medium">{sector.name}</h4>
-                                <Badge variant="secondary" className="ml-2">SETOR</Badge>
+                                <div 
+                                  className="cursor-pointer mr-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (canEdit()) cycleIcon(sector.id, 'sector');
+                                  }}
+                                >
+                                  <SectorIcon className="h-4 w-4 text-green-600" />
+                                </div>
+                                {editingItem?.id === sector.id ? (
+                                  <div className="flex items-center space-x-2">
+                                    <Input
+                                      value={editingItem.name}
+                                      onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
+                                      className="max-w-xs"
+                                    />
+                                    <Button size="sm" onClick={() => handleUpdateItem(sector.id, editingItem.name, 'sector')}>
+                                      Salvar
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <h4 className="font-medium">{sector.name}</h4>
+                                    <Badge variant="secondary" className="ml-2">SETOR</Badge>
+                                  </>
+                                )}
                               </div>
                               <div className="flex items-center space-x-2">
                                 <Badge variant="secondary">{sectorLifegroups.length} lifegroups</Badge>
                                 <Badge variant="outline">{totalPeopleInSector} pessoas</Badge>
                                 {canEdit() && (
                                   <div className="flex space-x-1">
-                                    <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                                    <Button size="sm" variant="outline" onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingItem({id: sector.id, name: sector.name, type: 'sector'});
+                                    }}>
                                       <Edit className="h-3 w-3" />
                                     </Button>
                                     {canDelete() && (
-                                      <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                                      <Button size="sm" variant="outline" onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteItem(sector.id, 'sector', sector.name);
+                                      }}>
                                         <Trash2 className="h-3 w-3" />
                                       </Button>
                                     )}
@@ -456,6 +662,7 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
                               <div className="mt-3 ml-6 space-y-2">
                                 {sectorLifegroups.map((lifegroup) => {
                                   const lifegroupPeople = people.filter(p => p.lifegroup_id === lifegroup.id);
+                                  const LifegroupIcon = getIcon('lifegroup', lifegroup.id);
                                   
                                   return (
                                     <div key={lifegroup.id} className="border rounded-lg p-3 bg-purple-50">
@@ -468,19 +675,51 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
                                             <ChevronDown className="h-4 w-4 mr-2" /> : 
                                             <ChevronRight className="h-4 w-4 mr-2" />
                                           }
-                                          <Users className="h-4 w-4 mr-2 text-purple-600" />
-                                          <span className="text-sm font-medium">{lifegroup.name}</span>
-                                          <Badge variant="outline" className="ml-2">LIFEGROUP</Badge>
+                                          <div 
+                                            className="cursor-pointer mr-2"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (canEdit()) cycleIcon(lifegroup.id, 'lifegroup');
+                                            }}
+                                          >
+                                            <LifegroupIcon className="h-4 w-4 text-purple-600" />
+                                          </div>
+                                          {editingItem?.id === lifegroup.id ? (
+                                            <div className="flex items-center space-x-2">
+                                              <Input
+                                                value={editingItem.name}
+                                                onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
+                                                className="max-w-xs"
+                                              />
+                                              <Button size="sm" onClick={() => handleUpdateItem(lifegroup.id, editingItem.name, 'lifegroup')}>
+                                                Salvar
+                                              </Button>
+                                              <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
+                                                Cancelar
+                                              </Button>
+                                            </div>
+                                          ) : (
+                                            <>
+                                              <span className="text-sm font-medium">{lifegroup.name}</span>
+                                              <Badge variant="outline" className="ml-2">LIFEGROUP</Badge>
+                                            </>
+                                          )}
                                         </div>
                                         <div className="flex items-center space-x-2">
                                           <Badge variant="outline">{lifegroupPeople.length} pessoas</Badge>
                                           {canEdit() && (
                                             <div className="flex space-x-1">
-                                              <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                                              <Button size="sm" variant="outline" onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEditingItem({id: lifegroup.id, name: lifegroup.name, type: 'lifegroup'});
+                                              }}>
                                                 <Edit className="h-3 w-3" />
                                               </Button>
                                               {canDelete() && (
-                                                <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                                                <Button size="sm" variant="outline" onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleDeleteItem(lifegroup.id, 'lifegroup', lifegroup.name);
+                                                }}>
                                                   <Trash2 className="h-3 w-3" />
                                                 </Button>
                                               )}
@@ -506,7 +745,12 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
                                                     <Edit className="h-2 w-2" />
                                                   </Button>
                                                   {canDelete() && (
-                                                    <Button size="sm" variant="outline" className="h-6 w-6 p-0">
+                                                    <Button 
+                                                      size="sm" 
+                                                      variant="outline" 
+                                                      className="h-6 w-6 p-0"
+                                                      onClick={() => handleDeleteItem(person.id, 'person', person.name)}
+                                                    >
                                                       <Trash2 className="h-2 w-2" />
                                                     </Button>
                                                   )}

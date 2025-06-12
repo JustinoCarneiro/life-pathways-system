@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,9 @@ const UserManagement = () => {
     role: 'user' as UserRole,
     sectorId: '',
   });
+  const [resetPasswordUserId, setResetPasswordUserId] = useState<string>('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
   const { toast } = useToast();
   const { userRole } = useAuth();
 
@@ -44,24 +48,40 @@ const UserManagement = () => {
     if (userRole === 'admin') {
       fetchUsers();
       fetchSectors();
-      // Generate password for admin user
-      generateAdminPassword();
+      // Change admin password to 123456
+      changeAdminPassword();
     }
   }, [userRole]);
 
-  const generateAdminPassword = async () => {
+  const changeAdminPassword = async () => {
     try {
-      // Generate a strong random password for the admin
-      const adminPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase() + '123!';
+      // Get all users to find the admin user
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
       
-      console.log(`Password for admin samuelvitoralves14@gmail.com: ${adminPassword}`);
+      if (authError) {
+        console.error('Error fetching auth users:', authError);
+        return;
+      }
+
+      const adminUser = authUsers.users.find(u => u.email === 'samuelvitoralves14@gmail.com');
       
-      toast({
-        title: "Senha do Administrador Gerada",
-        description: `Senha para samuelvitoralves14@gmail.com: ${adminPassword}`,
-      });
+      if (adminUser) {
+        const { error } = await supabase.auth.admin.updateUserById(adminUser.id, {
+          password: '123456'
+        });
+
+        if (error) {
+          console.error('Error updating admin password:', error);
+        } else {
+          console.log('Admin password updated to 123456');
+          toast({
+            title: "Senha do Administrador Atualizada",
+            description: "Senha alterada para: 123456",
+          });
+        }
+      }
     } catch (error) {
-      console.error('Error generating admin password:', error);
+      console.error('Error changing admin password:', error);
     }
   };
 
@@ -236,12 +256,12 @@ const UserManagement = () => {
     }
   };
 
-  const handleResetPassword = async (userId: string) => {
+  const handleResetPassword = async (userId: string, customPassword?: string) => {
     try {
-      const newPassword = Math.random().toString(36).slice(-12);
+      const passwordToSet = customPassword || Math.random().toString(36).slice(-12);
       
       const { error } = await supabase.auth.admin.updateUserById(userId, {
-        password: newPassword
+        password: passwordToSet
       });
 
       if (error) throw error;
@@ -249,8 +269,12 @@ const UserManagement = () => {
       const user = users.find(u => u.id === userId);
       toast({
         title: "Senha redefinida",
-        description: `Nova senha enviada para ${user?.email}. Senha temporária: ${newPassword}`,
+        description: `Nova senha para ${user?.email}: ${passwordToSet}`,
       });
+
+      setShowPasswordReset(false);
+      setResetPasswordUserId('');
+      setNewPassword('');
     } catch (error) {
       console.error('Error resetting password:', error);
       toast({
@@ -407,6 +431,36 @@ const UserManagement = () => {
             </div>
           )}
 
+          {showPasswordReset && (
+            <div className="border rounded-lg p-4 mb-6 bg-gray-50">
+              <h3 className="font-semibold mb-4">Alterar Senha do Usuário</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Nova Senha</label>
+                  <Input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Digite a nova senha"
+                  />
+                </div>
+              </div>
+              <div className="flex space-x-2 mt-4">
+                <Button onClick={() => handleResetPassword(resetPasswordUserId, newPassword)}>
+                  <Key className="h-4 w-4 mr-2" />
+                  Alterar Senha
+                </Button>
+                <Button variant="outline" onClick={() => {
+                  setShowPasswordReset(false);
+                  setResetPasswordUserId('');
+                  setNewPassword('');
+                }}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-4">
             {users.map((user) => (
               <div key={user.id} className="border rounded-lg p-4">
@@ -421,7 +475,14 @@ const UserManagement = () => {
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    <Button size="sm" variant="outline" onClick={() => handleResetPassword(user.id)}>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => {
+                        setResetPasswordUserId(user.id);
+                        setShowPasswordReset(true);
+                      }}
+                    >
                       <Key className="h-4 w-4" />
                     </Button>
                     <Button size="sm" variant="outline">
