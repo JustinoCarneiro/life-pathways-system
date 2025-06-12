@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,18 @@ import { Users, Plus, Edit, Trash2, Shield, Mail, Key, Loader2 } from 'lucide-re
 import type { Database } from '@/integrations/supabase/types';
 
 type UserRole = Database['public']['Enums']['user_role'];
+
+interface UserRoleData {
+  role: UserRole;
+}
+
+interface ProfileData {
+  id: string;
+  full_name: string;
+  contact?: string;
+  created_at: string;
+  user_roles: UserRoleData[];
+}
 
 interface User {
   id: string;
@@ -71,7 +82,7 @@ const UserManagement = () => {
       if (authError) {
         console.error('Error fetching auth users:', authError);
         // If we can't fetch auth users, just show profiles without emails
-        const usersWithoutEmails = data?.map(profile => ({
+        const usersWithoutEmails = (data as ProfileData[])?.map(profile => ({
           id: profile.id,
           email: 'Email not available',
           full_name: profile.full_name,
@@ -83,7 +94,7 @@ const UserManagement = () => {
         return;
       }
 
-      const usersWithEmails = data?.map(profile => {
+      const usersWithEmails = (data as ProfileData[])?.map(profile => {
         const authUser = authUsers.users.find(u => u.id === profile.id);
         return {
           id: profile.id,
