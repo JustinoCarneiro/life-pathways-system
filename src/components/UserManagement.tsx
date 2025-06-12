@@ -1,154 +1,318 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Plus, Edit, Trash2, Shield, Mail, Key } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { Users, Plus, Edit, Trash2, Shield, Mail, Key, Loader2 } from 'lucide-react';
+import type { Database } from '@/integrations/supabase/types';
+
+type UserRole = Database['public']['Enums']['user_role'];
 
 interface User {
   id: string;
-  name: string;
   email: string;
-  role: 'admin' | 'sector_leader' | 'user';
-  sectorId?: string;
-  permissions: {
-    canCreateSectors: boolean;
-    canDeleteSectors: boolean;
-    canManagePeople: boolean;
-    canAddPeople: boolean;
-    canEditPeople: boolean;
-    canDeletePeople: boolean;
-  };
+  full_name: string;
+  contact?: string;
+  role?: UserRole;
+  created_at: string;
+}
+
+interface Sector {
+  id: string;
+  name: string;
 }
 
 const UserManagement = () => {
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: '1',
-      name: 'João Silva',
-      email: 'joao@example.com',
-      role: 'sector_leader',
-      sectorId: '1',
-      permissions: {
-        canCreateSectors: false,
-        canDeleteSectors: false,
-        canManagePeople: true,
-        canAddPeople: true,
-        canEditPeople: true,
-        canDeletePeople: false,
-      },
-    },
-    {
-      id: '2',
-      name: 'Maria Santos',
-      email: 'maria@example.com',
-      role: 'user',
-      permissions: {
-        canCreateSectors: false,
-        canDeleteSectors: false,
-        canManagePeople: false,
-        canAddPeople: false,
-        canEditPeople: false,
-        canDeletePeople: false,
-      },
-    },
-  ]);
-
+  const [users, setUsers] = useState<User[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newUserData, setNewUserData] = useState({
-    name: '',
     email: '',
-    role: 'user' as User['role'],
+    full_name: '',
+    role: 'user' as UserRole,
     sectorId: '',
   });
+  const { toast } = useToast();
+  const { userRole } = useAuth();
 
-  const sectors = [
-    { id: '1', name: 'Setor Norte' },
-    { id: '2', name: 'Setor Sul' },
-  ];
+  useEffect(() => {
+    if (userRole === 'admin') {
+      fetchUsers();
+      fetchSectors();
+    }
+  }, [userRole]);
 
-  const togglePermission = (userId: string, permission: keyof User['permissions']) => {
-    setUsers(prev => prev.map(user => 
-      user.id === userId 
-        ? { 
-            ...user, 
-            permissions: { 
-              ...user.permissions, 
-              [permission]: !user.permissions[permission] 
-            } 
-          }
-        : user
-    ));
-  };
+  const fetchUsers = async () => {
+    try {
+      // Fetch users from auth.users via a custom query that joins with profiles and user_roles
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          contact,
+          created_at,
+          user_roles (
+            role
+          )
+        `);
 
-  const updateUserRole = (userId: string, role: User['role'], sectorId?: string) => {
-    setUsers(prev => prev.map(user => 
-      user.id === userId 
-        ? { 
-            ...user, 
-            role, 
-            sectorId: role === 'sector_leader' ? sectorId : undefined,
-            permissions: role === 'admin' ? {
-              canCreateSectors: true,
-              canDeleteSectors: true,
-              canManagePeople: true,
-              canAddPeople: true,
-              canEditPeople: true,
-              canDeletePeople: true,
-            } : user.permissions
-          }
-        : user
-    ));
-  };
+      if (error) throw error;
 
-  const handleCreateUser = () => {
-    if (newUserData.name && newUserData.email) {
-      const newUser: User = {
-        id: Date.now().toString(),
-        ...newUserData,
-        permissions: {
-          canCreateSectors: newUserData.role === 'admin',
-          canDeleteSectors: newUserData.role === 'admin',
-          canManagePeople: newUserData.role !== 'user',
-          canAddPeople: newUserData.role !== 'user',
-          canEditPeople: newUserData.role !== 'user',
-          canDeletePeople: newUserData.role === 'admin',
-        },
-      };
-      setUsers(prev => [...prev, newUser]);
-      setNewUserData({ name: '', email: '', role: 'user', sectorId: '' });
-      setShowCreateForm(false);
+      // Get user emails from auth metadata (this requires admin privileges)
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
       
-      // Simular envio de email com senha aleatória
-      const randomPassword = Math.random().toString(36).slice(-8);
-      console.log(`Email enviado para ${newUser.email} com senha: ${randomPassword}`);
+      if (authError) {
+        console.error('Error fetching auth users:', authError);
+        // If we can't fetch auth users, just show profiles without emails
+        const usersWithoutEmails = data?.map(profile => ({
+          id: profile.id,
+          email: 'Email not available',
+          full_name: profile.full_name,
+          contact: profile.contact,
+          role: profile.user_roles?.[0]?.role as UserRole,
+          created_at: profile.created_at,
+        })) || [];
+        setUsers(usersWithoutEmails);
+        return;
+      }
+
+      const usersWithEmails = data?.map(profile => {
+        const authUser = authUsers.users.find(u => u.id === profile.id);
+        return {
+          id: profile.id,
+          email: authUser?.email || 'No email',
+          full_name: profile.full_name,
+          contact: profile.contact,
+          role: profile.user_roles?.[0]?.role as UserRole,
+          created_at: profile.created_at,
+        };
+      }) || [];
+
+      setUsers(usersWithEmails);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: "Erro ao carregar usuários",
+        description: "Não foi possível carregar a lista de usuários.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleResetPassword = (userId: string) => {
-    const user = users.find(u => u.id === userId);
-    if (user) {
-      const newPassword = Math.random().toString(36).slice(-8);
-      console.log(`Nova senha para ${user.email}: ${newPassword}`);
-      alert(`Nova senha enviada para ${user.email}`);
+  const fetchSectors = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sectors')
+        .select('id, name')
+        .order('name');
+
+      if (error) throw error;
+      setSectors(data || []);
+    } catch (error) {
+      console.error('Error fetching sectors:', error);
     }
   };
 
-  const deleteUser = (userId: string) => {
-    if (confirm('Tem certeza que deseja excluir este usuário?')) {
+  const updateUserRole = async (userId: string, newRole: UserRole) => {
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .upsert({ 
+          user_id: userId, 
+          role: newRole 
+        }, { 
+          onConflict: 'user_id' 
+        });
+
+      if (error) throw error;
+
+      setUsers(prev => prev.map(user => 
+        user.id === userId ? { ...user, role: newRole } : user
+      ));
+
+      toast({
+        title: "Função atualizada",
+        description: "A função do usuário foi atualizada com sucesso.",
+      });
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      toast({
+        title: "Erro ao atualizar função",
+        description: "Não foi possível atualizar a função do usuário.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!newUserData.email || !newUserData.full_name) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Email e nome completo são obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Create user in auth
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: newUserData.email,
+        password: Math.random().toString(36).slice(-12), // Generate random password
+        user_metadata: {
+          full_name: newUserData.full_name
+        }
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Create profile
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            full_name: newUserData.full_name,
+            contact: newUserData.email
+          });
+
+        if (profileError) throw profileError;
+
+        // Assign role
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: authData.user.id,
+            role: newUserData.role
+          });
+
+        if (roleError) throw roleError;
+
+        toast({
+          title: "Usuário criado com sucesso",
+          description: `${newUserData.full_name} foi adicionado ao sistema.`,
+        });
+
+        setNewUserData({ email: '', full_name: '', role: 'user', sectorId: '' });
+        setShowCreateForm(false);
+        fetchUsers();
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      toast({
+        title: "Erro ao criar usuário",
+        description: "Não foi possível criar o usuário.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleResetPassword = async (userId: string) => {
+    try {
+      const newPassword = Math.random().toString(36).slice(-12);
+      
+      const { error } = await supabase.auth.admin.updateUserById(userId, {
+        password: newPassword
+      });
+
+      if (error) throw error;
+
+      const user = users.find(u => u.id === userId);
+      toast({
+        title: "Senha redefinida",
+        description: `Nova senha enviada para ${user?.email}. Senha temporária: ${newPassword}`,
+      });
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      toast({
+        title: "Erro ao redefinir senha",
+        description: "Não foi possível redefinir a senha.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteUser = async (userId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
+
+    try {
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+
+      if (error) throw error;
+
       setUsers(prev => prev.filter(user => user.id !== userId));
+      
+      toast({
+        title: "Usuário excluído",
+        description: "O usuário foi removido do sistema.",
+      });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "Erro ao excluir usuário",
+        description: "Não foi possível excluir o usuário.",
+        variant: "destructive",
+      });
     }
   };
 
-  const getRoleLabel = (role: User['role']) => {
+  const getRoleLabel = (role?: UserRole) => {
     switch (role) {
       case 'admin': return 'Administrador';
+      case 'area_leader': return 'Líder de Área';
       case 'sector_leader': return 'Líder de Setor';
+      case 'lifegroup_leader': return 'Líder de Lifegroup';
       default: return 'Usuário';
     }
   };
+
+  const getRoleBadgeVariant = (role?: UserRole) => {
+    switch (role) {
+      case 'admin': return 'default';
+      case 'area_leader': return 'secondary';
+      case 'sector_leader': return 'secondary';
+      case 'lifegroup_leader': return 'outline';
+      default: return 'outline';
+    }
+  };
+
+  if (userRole !== 'admin') {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">
+            <Shield className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Acesso Restrito</h3>
+            <p className="text-gray-600">
+              Você precisa ter permissões de administrador para acessar esta página.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+            Carregando usuários...
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -161,7 +325,7 @@ const UserManagement = () => {
                 Gestão de Usuários
               </CardTitle>
               <CardDescription>
-                Gerencie permissões, acessos e senhas dos usuários do sistema
+                Gerencie usuários, funções e permissões do sistema
               </CardDescription>
             </div>
             <Button onClick={() => setShowCreateForm(true)}>
@@ -176,10 +340,10 @@ const UserManagement = () => {
               <h3 className="font-semibold mb-4">Cadastrar Novo Usuário</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Nome</label>
+                  <label className="block text-sm font-medium mb-2">Nome Completo</label>
                   <Input
-                    value={newUserData.name}
-                    onChange={(e) => setNewUserData(prev => ({ ...prev, name: e.target.value }))}
+                    value={newUserData.full_name}
+                    onChange={(e) => setNewUserData(prev => ({ ...prev, full_name: e.target.value }))}
                     placeholder="Nome completo"
                   />
                 </div>
@@ -196,43 +360,25 @@ const UserManagement = () => {
                   <label className="block text-sm font-medium mb-2">Função</label>
                   <Select 
                     value={newUserData.role} 
-                    onValueChange={(role: User['role']) => setNewUserData(prev => ({ ...prev, role }))}
+                    onValueChange={(role: UserRole) => setNewUserData(prev => ({ ...prev, role }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="user">Usuário</SelectItem>
+                      <SelectItem value="lifegroup_leader">Líder de Lifegroup</SelectItem>
                       <SelectItem value="sector_leader">Líder de Setor</SelectItem>
+                      <SelectItem value="area_leader">Líder de Área</SelectItem>
                       <SelectItem value="admin">Administrador</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                {newUserData.role === 'sector_leader' && (
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Setor</label>
-                    <Select 
-                      value={newUserData.sectorId} 
-                      onValueChange={(sectorId) => setNewUserData(prev => ({ ...prev, sectorId }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um setor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sectors.map(sector => (
-                          <SelectItem key={sector.id} value={sector.id}>
-                            {sector.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
               </div>
               <div className="flex space-x-2 mt-4">
                 <Button onClick={handleCreateUser}>
                   <Mail className="h-4 w-4 mr-2" />
-                  Criar e Enviar Acesso
+                  Criar Usuário
                 </Button>
                 <Button variant="outline" onClick={() => setShowCreateForm(false)}>
                   Cancelar
@@ -246,17 +392,12 @@ const UserManagement = () => {
               <div key={user.id} className="border rounded-lg p-4">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="font-semibold">{user.name}</h3>
+                    <h3 className="font-semibold">{user.full_name}</h3>
                     <p className="text-sm text-gray-600">{user.email}</p>
                     <div className="flex items-center space-x-2 mt-2">
-                      <Badge variant={user.role === 'admin' ? 'default' : user.role === 'sector_leader' ? 'secondary' : 'outline'}>
+                      <Badge variant={getRoleBadgeVariant(user.role)}>
                         {getRoleLabel(user.role)}
                       </Badge>
-                      {user.sectorId && (
-                        <Badge variant="outline">
-                          {sectors.find(s => s.id === user.sectorId)?.name}
-                        </Badge>
-                      )}
                     </div>
                   </div>
                   <div className="flex space-x-2">
@@ -272,102 +413,24 @@ const UserManagement = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">Função</label>
                     <Select 
-                      value={user.role} 
-                      onValueChange={(role: User['role']) => updateUserRole(user.id, role, user.sectorId)}
+                      value={user.role || 'user'} 
+                      onValueChange={(role: UserRole) => updateUserRole(user.id, role)}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="user">Usuário</SelectItem>
+                        <SelectItem value="lifegroup_leader">Líder de Lifegroup</SelectItem>
                         <SelectItem value="sector_leader">Líder de Setor</SelectItem>
+                        <SelectItem value="area_leader">Líder de Área</SelectItem>
                         <SelectItem value="admin">Administrador</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-
-                  {user.role === 'sector_leader' && (
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Setor</label>
-                      <Select 
-                        value={user.sectorId || ''} 
-                        onValueChange={(sectorId) => updateUserRole(user.id, user.role, sectorId)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um setor" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {sectors.map(sector => (
-                            <SelectItem key={sector.id} value={sector.id}>
-                              {sector.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-medium mb-2 flex items-center">
-                    <Shield className="h-4 w-4 mr-2" />
-                    Permissões
-                  </h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={user.permissions.canCreateSectors}
-                        onChange={() => togglePermission(user.id, 'canCreateSectors')}
-                        disabled={user.role === 'admin'}
-                        className="rounded"
-                      />
-                      <span className="text-sm">Criar setores</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={user.permissions.canDeleteSectors}
-                        onChange={() => togglePermission(user.id, 'canDeleteSectors')}
-                        disabled={user.role === 'admin'}
-                        className="rounded"
-                      />
-                      <span className="text-sm">Excluir setores</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={user.permissions.canAddPeople}
-                        onChange={() => togglePermission(user.id, 'canAddPeople')}
-                        disabled={user.role === 'admin'}
-                        className="rounded"
-                      />
-                      <span className="text-sm">Adicionar pessoas</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={user.permissions.canEditPeople}
-                        onChange={() => togglePermission(user.id, 'canEditPeople')}
-                        disabled={user.role === 'admin'}
-                        className="rounded"
-                      />
-                      <span className="text-sm">Editar pessoas</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={user.permissions.canDeletePeople}
-                        onChange={() => togglePermission(user.id, 'canDeletePeople')}
-                        disabled={user.role === 'admin'}
-                        className="rounded"
-                      />
-                      <span className="text-sm">Excluir pessoas</span>
-                    </label>
                   </div>
                 </div>
               </div>
