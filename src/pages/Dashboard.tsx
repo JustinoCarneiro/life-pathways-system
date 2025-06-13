@@ -284,7 +284,7 @@ const Dashboard = () => {
           </div>
         </main>
       </div>
-    </Sidebar Provider>
+    </SidebarProvider>
   );
 };
 
