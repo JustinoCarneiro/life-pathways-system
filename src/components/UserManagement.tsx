@@ -22,21 +22,20 @@ interface User {
   created_at: string;
 }
 
-interface Sector {
+interface AuthUser {
   id: string;
-  name: string;
+  email?: string;
+  user_metadata?: any;
 }
 
 const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
-  const [sectors, setSectors] = useState<Sector[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newUserData, setNewUserData] = useState({
     email: '',
     full_name: '',
     role: 'user' as UserRole,
-    sectorId: '',
   });
   const [resetPasswordUserId, setResetPasswordUserId] = useState<string>('');
   const [newPassword, setNewPassword] = useState('');
@@ -47,13 +46,12 @@ const UserManagement = () => {
   useEffect(() => {
     if (userRole === 'admin') {
       fetchUsers();
-      fetchSectors();
-      // Change admin password to 123456
-      changeAdminPassword();
+      // Configure admin user on component mount
+      configureAdminUser();
     }
   }, [userRole]);
 
-  const changeAdminPassword = async () => {
+  const configureAdminUser = async () => {
     try {
       // Get all users to find the admin user
       const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
@@ -63,7 +61,7 @@ const UserManagement = () => {
         return;
       }
 
-      const adminUser = authUsers.users.find(u => u.email === 'samuelvitoralves14@gmail.com');
+      const adminUser = authUsers.users.find((u: AuthUser) => u.email === 'samuelvitoralves14@gmail.com');
       
       if (adminUser) {
         // Update password
@@ -139,7 +137,7 @@ const UserManagement = () => {
       }
 
       const usersWithEmails = profilesData?.map(profile => {
-        const authUser = authUsers.users.find(u => u.id === profile.id);
+        const authUser = authUsers.users.find((u: AuthUser) => u.id === profile.id);
         const userRole = rolesData?.find(role => role.user_id === profile.id);
         return {
           id: profile.id,
@@ -161,20 +159,6 @@ const UserManagement = () => {
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const fetchSectors = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('sectors')
-        .select('id, name')
-        .order('name');
-
-      if (error) throw error;
-      setSectors(data || []);
-    } catch (error) {
-      console.error('Error fetching sectors:', error);
     }
   };
 
@@ -258,7 +242,7 @@ const UserManagement = () => {
           description: `${newUserData.full_name} foi adicionado ao sistema.`,
         });
 
-        setNewUserData({ email: '', full_name: '', role: 'user', sectorId: '' });
+        setNewUserData({ email: '', full_name: '', role: 'user' });
         setShowCreateForm(false);
         fetchUsers();
       }

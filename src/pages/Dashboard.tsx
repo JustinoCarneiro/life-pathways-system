@@ -38,7 +38,8 @@ import {
   Users, 
   User,
   Home,
-  UserCheck
+  UserCheck,
+  Shield
 } from 'lucide-react';
 
 const Dashboard = () => {
@@ -71,6 +72,8 @@ const Dashboard = () => {
     { id: 'lideranca', label: 'Liderança', icon: Building },
     { id: 'discipulados', label: 'Discipulados', icon: UserCheck },
     { id: 'pessoas', label: 'Pessoas', icon: Users },
+    // Only show User Management for admins
+    ...(userRole === 'admin' ? [{ id: 'gestao-usuarios', label: 'Gestão de Usuários', icon: Shield }] : []),
     { id: 'configuracoes', label: 'Configurações', icon: Settings },
   ];
 
@@ -142,6 +145,8 @@ const Dashboard = () => {
         );
       case 'pessoas':
         return <PeopleManagement />;
+      case 'gestao-usuarios':
+        return userRole === 'admin' ? <UserManagement /> : null;
       case 'configuracoes':
         return (
           <div className="space-y-6">
@@ -188,11 +193,16 @@ const Dashboard = () => {
         );
       case 'perfil':
         return <UserProfile />;
-      case 'gestao-usuarios':
-        return userRole === 'admin' ? <UserManagement /> : null;
       default:
         return <StepsCharts />;
     }
+  };
+
+  const getActiveTabLabel = () => {
+    const activeItem = menuItems.find(item => item.id === activeTab);
+    if (activeItem) return activeItem.label;
+    if (activeTab === 'perfil') return 'Meu Perfil';
+    return 'Dashboard';
   };
 
   return (
@@ -241,18 +251,6 @@ const Dashboard = () => {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               
-              {userRole === 'admin' && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={() => setActiveTab('gestao-usuarios')}
-                    isActive={activeTab === 'gestao-usuarios'}
-                  >
-                    <Users className="h-4 w-4" />
-                    <span>Gestão de Usuários</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              
               <SidebarMenuItem>
                 <SidebarMenuButton onClick={handleSignOut}>
                   <LogOut className="h-4 w-4" />
@@ -273,7 +271,7 @@ const Dashboard = () => {
               <SidebarTrigger />
               <div className="ml-4">
                 <h2 className="text-lg font-semibold text-gray-900">
-                  {menuItems.find(item => item.id === activeTab)?.label || 'Dashboard'}
+                  {getActiveTabLabel()}
                 </h2>
               </div>
             </div>
