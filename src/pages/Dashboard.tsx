@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,6 +47,7 @@ const Dashboard = () => {
   const [selectedArea, setSelectedArea] = useState('all');
   const [selectedSector, setSelectedSector] = useState('all');
   const [selectedLifegroup, setSelectedLifegroup] = useState('all');
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -97,7 +97,7 @@ const Dashboard = () => {
                   <SelectValue placeholder="Selecionar Setor" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os Setores</SelectItem>
+                  <SelectItem value="all">Todos os Setores</Select>
                 </SelectContent>
               </Select>
               
@@ -126,14 +126,24 @@ const Dashboard = () => {
         );
       case 'lideranca':
         return (
-          <HierarchyManagement 
-            showCreateForm={false}
-            onCloseCreateForm={() => {}}
-            selectedArea={selectedArea}
-            selectedSector={selectedSector}
-            selectedLifegroup={selectedLifegroup}
-            userRole={userRole}
-          />
+          <div className="space-y-6">
+            {userRole === 'admin' && (
+              <div className="flex justify-end">
+                <Button onClick={() => setShowCreateForm(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Item
+                </Button>
+              </div>
+            )}
+            <HierarchyManagement 
+              showCreateForm={showCreateForm}
+              onCloseCreateForm={() => setShowCreateForm(false)}
+              selectedArea={selectedArea}
+              selectedSector={selectedSector}
+              selectedLifegroup={selectedLifegroup}
+              userRole={userRole}
+            />
+          </div>
         );
       case 'discipulados':
         return (

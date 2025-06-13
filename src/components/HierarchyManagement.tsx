@@ -142,6 +142,15 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
   };
 
   const handleCreateItem = async () => {
+    if (!canEdit()) {
+      toast({
+        title: "Acesso negado",
+        description: "Você não tem permissão para criar itens.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!newItemData.name.trim()) {
       toast({
         title: "Nome obrigatório",
@@ -215,6 +224,15 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
   };
 
   const handleUpdateItem = async (id: string, name: string, type: string) => {
+    if (!canEdit()) {
+      toast({
+        title: "Acesso negado",
+        description: "Você não tem permissão para editar itens.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       let error;
       
@@ -255,6 +273,15 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
   };
 
   const handleDeleteItem = async (id: string, type: string, name: string) => {
+    if (!canDelete()) {
+      toast({
+        title: "Acesso negado",
+        description: "Você não tem permissão para excluir itens.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!confirm(`Tem certeza que deseja excluir "${name}"?`)) return;
 
     try {
@@ -332,6 +359,10 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
     return userRole === 'admin';
   };
 
+  const canCreate = () => {
+    return userRole === 'admin';
+  };
+
   const getIcon = (type: string, itemId: string) => {
     const iconIndex = selectedIcons[itemId] || 0;
     let icons;
@@ -397,7 +428,7 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
                 Visualize e gerencie toda a estrutura hierárquica do DISTRITO START
               </CardDescription>
             </div>
-            {canEdit() && (
+            {canCreate() && (
               <div className="flex space-x-2">
                 <Button onClick={() => setShowPersonForm(true)} size="sm">
                   <User className="h-4 w-4 mr-2" />
@@ -418,7 +449,7 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
             />
           )}
 
-          {showCreateForm && (
+          {showCreateForm && canCreate() && (
             <div className="border rounded-lg p-4 mb-6 bg-gray-50">
               <h3 className="font-semibold mb-4">Criar Novo Item</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -778,7 +809,7 @@ const HierarchyManagement: React.FC<HierarchyManagementProps> = ({
               <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma área encontrada</h3>
               <p className="text-gray-600 mb-4">Comece criando sua primeira área.</p>
-              {userRole === 'admin' && (
+              {canCreate() && (
                 <Button onClick={() => setNewItemData({ name: '', type: 'area', parentId: '' })}>
                   <Plus className="h-4 w-4 mr-2" />
                   Criar Primeira Área
