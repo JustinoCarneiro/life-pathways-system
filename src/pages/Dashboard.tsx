@@ -26,6 +26,7 @@ import ChartsPage from '@/components/ChartsPage';
 import DiscipledPeople from '@/components/DiscipledPeople';
 import ReportGenerator from '@/components/ReportGenerator';
 import PeopleManagement from '@/components/PeopleManagement';
+import StepsCharts from '@/components/StepsCharts';
 import { useAuth } from '@/hooks/useAuth';
 import { 
   BarChart3, 
@@ -106,7 +107,18 @@ const Dashboard = () => {
                 </SelectContent>
               </Select>
             </div>
-            <ChartsPage />
+            
+            <DashboardStats 
+              selectedArea={selectedArea}
+              selectedSector={selectedSector}
+              selectedLifegroup={selectedLifegroup}
+            />
+            
+            <StepsCharts 
+              selectedArea={selectedArea}
+              selectedSector={selectedSector}
+              selectedLifegroup={selectedLifegroup}
+            />
           </div>
         );
       case 'lideranca':
@@ -179,7 +191,7 @@ const Dashboard = () => {
       case 'gestao-usuarios':
         return userRole === 'admin' ? <UserManagement /> : null;
       default:
-        return <ChartsPage />;
+        return <StepsCharts />;
     }
   };
 
@@ -272,7 +284,7 @@ const Dashboard = () => {
           </div>
         </main>
       </div>
-    </SidebarProvider>
+    </Sidebar Provider>
   );
 };
 

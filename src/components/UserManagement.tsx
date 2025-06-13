@@ -66,22 +66,38 @@ const UserManagement = () => {
       const adminUser = authUsers.users.find(u => u.email === 'samuelvitoralves14@gmail.com');
       
       if (adminUser) {
-        const { error } = await supabase.auth.admin.updateUserById(adminUser.id, {
+        // Update password
+        const { error: passwordError } = await supabase.auth.admin.updateUserById(adminUser.id, {
           password: '123456'
         });
 
-        if (error) {
-          console.error('Error updating admin password:', error);
+        if (passwordError) {
+          console.error('Error updating admin password:', passwordError);
         } else {
           console.log('Admin password updated to 123456');
-          toast({
-            title: "Senha do Administrador Atualizada",
-            description: "Senha alterada para: 123456",
-          });
+          
+          // Update user role to admin
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .upsert({ 
+              user_id: adminUser.id, 
+              role: 'admin' as UserRole
+            }, { 
+              onConflict: 'user_id' 
+            });
+
+          if (roleError) {
+            console.error('Error updating admin role:', roleError);
+          } else {
+            toast({
+              title: "Usuário Administrador Configurado",
+              description: "Email: samuelvitoralves14@gmail.com | Senha: 123456 | Função: Administrador",
+            });
+          }
         }
       }
     } catch (error) {
-      console.error('Error changing admin password:', error);
+      console.error('Error configuring admin user:', error);
     }
   };
 
