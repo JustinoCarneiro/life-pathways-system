@@ -5,15 +5,15 @@ import { TrendingUp, Users, Building, MapPin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DashboardStatsProps {
-  selectedArea: string;
-  selectedSector: string;
-  selectedLifegroup: string;
+  selectedArea?: string;
+  selectedSector?: string;
+  selectedLifegroup?: string;
 }
 
 const DashboardStats: React.FC<DashboardStatsProps> = ({
-  selectedArea,
-  selectedSector,
-  selectedLifegroup
+  selectedArea = 'all',
+  selectedSector = 'all',
+  selectedLifegroup = 'all'
 }) => {
   const [stats, setStats] = useState({
     totalAreas: 0,

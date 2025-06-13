@@ -4,33 +4,45 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  Sidebar, 
+  SidebarContent, 
+  SidebarFooter, 
+  SidebarGroup, 
+  SidebarGroupContent, 
+  SidebarGroupLabel, 
+  SidebarHeader, 
+  SidebarMenu, 
+  SidebarMenuButton, 
+  SidebarMenuItem, 
+  SidebarProvider, 
+  SidebarTrigger 
+} from '@/components/ui/sidebar';
 import DashboardStats from '@/components/DashboardStats';
 import UserProfile from '@/components/UserProfile';
 import UserManagement from '@/components/UserManagement';
 import HierarchyManagement from '@/components/HierarchyManagement';
 import ChartsPage from '@/components/ChartsPage';
-import SectorsList from '@/components/SectorsList';
 import DiscipledPeople from '@/components/DiscipledPeople';
 import ReportGenerator from '@/components/ReportGenerator';
+import PeopleManagement from '@/components/PeopleManagement';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { 
   BarChart3, 
   Building, 
   FileText, 
   LogOut, 
-  MapPin, 
   Plus, 
   Settings, 
   Users, 
   User,
-  PlusCircle
+  Home,
+  UserCheck
 } from 'lucide-react';
 
 const Dashboard = () => {
   const { user, signOut, userRole } = useAuth();
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [activeTab, setActiveTab] = useState('inicio');
   const [selectedArea, setSelectedArea] = useState('all');
   const [selectedSector, setSelectedSector] = useState('all');
   const [selectedLifegroup, setSelectedLifegroup] = useState('all');
@@ -53,104 +65,35 @@ const Dashboard = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">DISTRITO START</h1>
-              <Badge variant="secondary" className="ml-3">
-                {getRoleLabel()}
-              </Badge>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                {user?.user_metadata?.full_name || user?.email}
-              </span>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sair
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+  const menuItems = [
+    { id: 'inicio', label: 'Início', icon: Home },
+    { id: 'lideranca', label: 'Liderança', icon: Building },
+    { id: 'discipulados', label: 'Discipulados', icon: UserCheck },
+    { id: 'pessoas', label: 'Pessoas', icon: Users },
+    { id: 'configuracoes', label: 'Configurações', icon: Settings },
+  ];
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7">
-            <TabsTrigger value="overview" className="flex items-center">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Visão Geral
-            </TabsTrigger>
-            <TabsTrigger value="hierarchy" className="flex items-center">
-              <Building className="h-4 w-4 mr-2" />
-              Hierarquia
-              {userRole === 'admin' && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="ml-2 h-6 w-6 p-0"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowCreateForm(true);
-                  }}
-                >
-                  <PlusCircle className="h-3 w-3" />
-                </Button>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="sectors" className="flex items-center">
-              <MapPin className="h-4 w-4 mr-2" />
-              Setores
-            </TabsTrigger>
-            <TabsTrigger value="discipled" className="flex items-center">
-              <Users className="h-4 w-4 mr-2" />
-              Discipulados
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center">
-              <FileText className="h-4 w-4 mr-2" />
-              Relatórios
-            </TabsTrigger>
-            <TabsTrigger value="charts" className="flex items-center">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Gráficos
-            </TabsTrigger>
-            <TabsTrigger value="profile" className="flex items-center">
-              <User className="h-4 w-4 mr-2" />
-              {userRole === 'admin' ? 'Gestão' : 'Perfil'}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-            <DashboardStats />
-          </TabsContent>
-
-          <TabsContent value="hierarchy" className="space-y-6">
-            <HierarchyManagement 
-              showCreateForm={showCreateForm}
-              onCloseCreateForm={() => setShowCreateForm(false)}
-              selectedArea={selectedArea}
-              selectedSector={selectedSector}
-              selectedLifegroup={selectedLifegroup}
-              userRole={userRole}
-            />
-          </TabsContent>
-
-          <TabsContent value="sectors" className="space-y-6">
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'inicio':
+        return (
+          <div className="space-y-6">
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <Select value={selectedArea} onValueChange={setSelectedArea}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Selecionar Área" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as Áreas</SelectItem>
+                </SelectContent>
+              </Select>
+              
               <Select value={selectedSector} onValueChange={setSelectedSector}>
                 <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="Selecionar Setor" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os Setores</SelectItem>
-                  <SelectItem value="1">Setor Norte</SelectItem>
-                  <SelectItem value="2">Setor Sul</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -160,62 +103,176 @@ const Dashboard = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os Lifegroups</SelectItem>
-                  <SelectItem value="1">Lifegroup Alpha</SelectItem>
-                  <SelectItem value="2">Lifegroup Beta</SelectItem>
                 </SelectContent>
               </Select>
-
-              {userRole === 'admin' && (
-                <Button onClick={() => setShowCreateForm(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Setor
-                </Button>
-              )}
             </div>
-
-            <SectorsList 
-              showCreateForm={showCreateForm}
-              onCloseCreateForm={() => setShowCreateForm(false)}
-              selectedSector={selectedSector}
-              selectedLifegroup={selectedLifegroup}
-            />
-          </TabsContent>
-
-          <TabsContent value="discipled" className="space-y-6">
-            <DiscipledPeople />
-          </TabsContent>
-
-          <TabsContent value="reports" className="space-y-6">
-            <ReportGenerator />
-          </TabsContent>
-
-          <TabsContent value="charts" className="space-y-6">
             <ChartsPage />
-          </TabsContent>
+          </div>
+        );
+      case 'lideranca':
+        return (
+          <HierarchyManagement 
+            showCreateForm={false}
+            onCloseCreateForm={() => {}}
+            selectedArea={selectedArea}
+            selectedSector={selectedSector}
+            selectedLifegroup={selectedLifegroup}
+            userRole={userRole}
+          />
+        );
+      case 'discipulados':
+        return (
+          <DiscipledPeople 
+            selectedArea={selectedArea}
+            selectedSector={selectedSector}
+            selectedLifegroup={selectedLifegroup}
+          />
+        );
+      case 'pessoas':
+        return <PeopleManagement />;
+      case 'configuracoes':
+        return (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configurações do Sistema</CardTitle>
+                <CardDescription>
+                  Gerencie as configurações gerais do sistema
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <h3 className="font-medium">Perfil do Usuário</h3>
+                      <p className="text-sm text-gray-600">Gerencie suas informações pessoais</p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setActiveTab('perfil')}
+                    >
+                      Acessar
+                    </Button>
+                  </div>
+                  
+                  {userRole === 'admin' && (
+                    <div className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <h3 className="font-medium">Gestão de Usuários</h3>
+                        <p className="text-sm text-gray-600">Gerencie usuários e permissões</p>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setActiveTab('gestao-usuarios')}
+                      >
+                        Acessar
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      case 'perfil':
+        return <UserProfile />;
+      case 'gestao-usuarios':
+        return userRole === 'admin' ? <UserManagement /> : null;
+      default:
+        return <ChartsPage />;
+    }
+  };
 
-          <TabsContent value="profile" className="space-y-6">
-            {userRole === 'admin' ? (
-              <Tabs defaultValue="profile" className="space-y-6">
-                <TabsList>
-                  <TabsTrigger value="profile">Meu Perfil</TabsTrigger>
-                  <TabsTrigger value="users">Gestão de Usuários</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="profile">
-                  <UserProfile />
-                </TabsContent>
-                
-                <TabsContent value="users">
-                  <UserManagement />
-                </TabsContent>
-              </Tabs>
-            ) : (
-              <UserProfile />
-            )}
-          </TabsContent>
-        </Tabs>
-      </main>
-    </div>
+  return (
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-gray-50">
+        <Sidebar>
+          <SidebarHeader className="p-4">
+            <div className="flex items-center space-x-2">
+              <h1 className="text-xl font-bold text-gray-900">DISTRITO START</h1>
+            </div>
+            <Badge variant="secondary" className="w-fit">
+              {getRoleLabel()}
+            </Badge>
+          </SidebarHeader>
+          
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {menuItems.map((item) => (
+                    <SidebarMenuItem key={item.id}>
+                      <SidebarMenuButton
+                        onClick={() => setActiveTab(item.id)}
+                        isActive={activeTab === item.id}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+          
+          <SidebarFooter className="p-4 space-y-2">
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => setActiveTab('perfil')}
+                  isActive={activeTab === 'perfil'}
+                >
+                  <User className="h-4 w-4" />
+                  <span>Meu Perfil</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              
+              {userRole === 'admin' && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => setActiveTab('gestao-usuarios')}
+                    isActive={activeTab === 'gestao-usuarios'}
+                  >
+                    <Users className="h-4 w-4" />
+                    <span>Gestão de Usuários</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={handleSignOut}>
+                  <LogOut className="h-4 w-4" />
+                  <span>Sair</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+            
+            <div className="text-xs text-gray-500 px-2">
+              {user?.user_metadata?.full_name || user?.email}
+            </div>
+          </SidebarFooter>
+        </Sidebar>
+
+        <main className="flex-1 flex flex-col">
+          <header className="bg-white shadow-sm border-b">
+            <div className="flex items-center h-16 px-4">
+              <SidebarTrigger />
+              <div className="ml-4">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {menuItems.find(item => item.id === activeTab)?.label || 'Dashboard'}
+                </h2>
+              </div>
+            </div>
+          </header>
+
+          <div className="flex-1 p-6 overflow-auto">
+            {renderContent()}
+          </div>
+        </main>
+      </div>
+    </SidebarProvider>
   );
 };
 

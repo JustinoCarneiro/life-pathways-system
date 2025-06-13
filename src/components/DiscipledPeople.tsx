@@ -7,9 +7,9 @@ import { UserCheck, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DiscipledPeopleProps {
-  selectedArea: string;
-  selectedSector: string;
-  selectedLifegroup: string;
+  selectedArea?: string;
+  selectedSector?: string;
+  selectedLifegroup?: string;
 }
 
 interface Person {
@@ -26,9 +26,9 @@ interface Person {
 }
 
 const DiscipledPeople: React.FC<DiscipledPeopleProps> = ({
-  selectedArea,
-  selectedSector,
-  selectedLifegroup
+  selectedArea = 'all',
+  selectedSector = 'all',
+  selectedLifegroup = 'all'
 }) => {
   const [discipledPeople, setDiscipledPeople] = useState<Person[]>([]);
   const [isLoading, setIsLoading] = useState(true);
